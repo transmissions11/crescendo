@@ -109,8 +109,7 @@ async fn worker(addr: &str, stats: Arc<Stats>) {
                     // Read minimal response
                     match stream.read(&mut buf).await {
                         Ok(0) => break,
-                        Ok(data) => {
-                            println!("TCP Read: {}", String::from_utf8_lossy(&buf[..data]));
+                        Ok(_) => {
                             stats.requests.fetch_add(1, Ordering::Relaxed);
                         }
                         Err(e) => {
