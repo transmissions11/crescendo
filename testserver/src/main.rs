@@ -12,7 +12,9 @@ struct Stats {
 async fn handler(stats: web::Data<Stats>) -> Result<HttpResponse> {
     stats.total_requests.fetch_add(1, Ordering::Relaxed);
     stats.requests_this_second.fetch_add(1, Ordering::Relaxed);
-    Ok(HttpResponse::Ok().finish())
+    Ok(HttpResponse::Ok().body(
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla non ex tellus. Proin consectetur urna pretium interdum tempor. Etiam volutpat elit in felis lobortis, luctus pellentesque tellus efficitur. In orci neque, pellentesque vel magna sit amet, viverra lobortis nunc. Quisque quis massa quis dui dictum placerat. Donec bibendum ut augue ut posuere. Nunc quis nibh massa. Etiam aliquam sem ut enim rhoncus, at semper nibh vestibulum. Etiam rhoncus accumsan odio, a varius urna aliquet non. Mauris nulla risus, pretium eu vestibulum sit amet, imperdiet eu lacus. Suspendisse faucibus lectus ut nisl bibendum, at gravida risus tempus. Donec pharetra nisi eu lectus egestas, quis porttitor libero semper. Phasellus eu velit mi. Integer sit amet ullamcorper odio, ac feugiat sem. Cras hendrerit tortor a metus venenatis, a iaculis lorem volutpat.",
+    ))
 }
 
 #[tokio::main]
