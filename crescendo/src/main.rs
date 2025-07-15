@@ -1,3 +1,4 @@
+use http::StatusCode;
 use http_body_util::{BodyExt, Empty};
 use hyper::body::Bytes;
 use hyper::Request;
@@ -116,11 +117,12 @@ async fn worker(url: &str, stats: Arc<Stats>) {
         // Send request
         match client.request(req).await {
             Ok(res) => {
-                stats.requests.fetch_add(1, Ordering::Relaxed);
-                // Consume the body to complete the request
-                let body = res.into_body();
-                let body_bytes = black_box(body.collect().await.unwrap());
-                println!("Request completed: {:?}", body_bytes);
+                if res.status() == StatusCode::OK {
+                    stats.requests.fetch_add(1, Ordering::Relaxed);
+                } else {
+                    println!("Request failed: {:?}", res);
+                    stats.errors.fetch_add(1, Ordering::Relaxed);
+                }
             }
             Err(e) => {
                 eprintln!("Request failed: {}", e);
