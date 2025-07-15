@@ -1,8 +1,7 @@
-use std::sync::Arc;
+use actix_web::{web, App, HttpResponse, HttpServer, Result};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
 use tokio::time::interval;
 
 // Global counters using atomics for lock-free performance
@@ -11,8 +10,16 @@ struct Stats {
     requests_this_second: AtomicU64,
 }
 
+async fn handler(stats: web::Data<Stats>) -> Result<HttpResponse> {
+    // Increment counters
+    stats.total_requests.fetch_add(1, Ordering::Relaxed);
+    stats.requests_this_second.fetch_add(1, Ordering::Relaxed);
+
+    Ok(HttpResponse::Ok().body("OK"))
+}
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> std::io::Result<()> {
     // Use all available CPU cores
     println!("Starting server with {} threads", num_cpus::get());
 
@@ -42,39 +49,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Bind to TCP socket with larger backlog
-    let listener = TcpListener::bind("127.0.0.1:8080").await?;
     println!("Server listening on http://127.0.0.1:8080");
 
-    // Pre-create response
-    let response = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
-
-    loop {
-        let (mut socket, _) = listener.accept().await?;
-        let stats = stats.clone();
-        let response = response.clone();
-
-        // Spawn task for each connection
-        tokio::spawn(async move {
-            let mut buf = vec![0; 1024];
-
-            loop {
-                // Read request (we don't parse it for speed)
-                match socket.read(&mut buf).await {
-                    Ok(0) => break, // Connection closed
-                    Ok(_n) => {
-                        // Increment counters
-                        stats.total_requests.fetch_add(1, Ordering::Relaxed);
-                        stats.requests_this_second.fetch_add(1, Ordering::Relaxed);
-
-                        // Write response
-                        if socket.write_all(&response).await.is_err() {
-                            break;
-                        }
-                    }
-                    Err(_) => break,
-                }
-            }
-        });
-    }
+    HttpServer::new(move || {
+        App::new()
+            .app_data(web::Data::from(stats.clone()))
+            .route("/", web::get().to(handler))
+            .route("/", web::post().to(handler))
+            .route("/", web::put().to(handler))
+            .route("/", web::delete().to(handler))
+            .route("/", web::head().to(handler))
+            .route("/", web::patch().to(handler))
+            .default_service(web::route().to(handler))
+    })
+    .workers(num_cpus::get())
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
 }
