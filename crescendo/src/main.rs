@@ -65,7 +65,8 @@ async fn worker(addr: &str) {
                 // Pipeline multiple requests on same connection
                 loop {
                     // Send request
-                    if stream.write_all(request).await.is_err() {
+                    if let Err(e) = stream.write_all(request).await {
+                        println!("Write error: {}", e);
                         break;
                     }
                 }
