@@ -7,8 +7,8 @@ use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let num_threads = 12;
-    let connections_per_thread = 2048 / num_threads;
+    let num_threads = 16;
+    let connections_per_thread = 1024 / num_threads;
     let duration_secs = 30;
     let url = "127.0.0.1:8080";
 
