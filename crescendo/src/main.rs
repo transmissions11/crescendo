@@ -1,5 +1,5 @@
 use http::StatusCode;
-use http_body_util::{BodyExt, Empty};
+use http_body_util::{BodyExt, Empty, Full};
 use hyper::body::Bytes;
 use hyper::Request;
 use hyper_util::client::legacy::connect::HttpConnector;
@@ -104,7 +104,7 @@ async fn worker(url: &str, stats: Arc<Stats>) {
         let req = match Request::builder()
             .uri(url)
             .header("Host", "localhost")
-            .body(Empty::<Bytes>::new())
+            .body(Full::new(Bytes::from("hello world")))
         {
             Ok(req) => req,
             Err(e) => {
