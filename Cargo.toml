@@ -4,8 +4,3 @@ members = [
     "testserver",
 ]
 resolver = "2"
-
-[profile.release]
-lto = true
-codegen-units = 1
-panic = "abort"
