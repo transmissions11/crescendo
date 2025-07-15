@@ -7,11 +7,13 @@ use tokio::time::interval;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let connections = 400;
+    let threads = 12;
+    let connections_per_thread = 400 / threads;
     let duration_secs = 30;
     let url = "127.0.0.1:8080";
     
-    println!("Running {} connections for {}s against http://{}/", connections, duration_secs, url);
+    println!("Running {} threads with {} connections each for {}s against http://{}/", 
+             threads, connections_per_thread, duration_secs, url);
     
     let stats = Arc::new(Stats {
         requests: AtomicU64::new(0),
@@ -39,18 +41,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
     
-    // Spawn workers
+    // Spawn threads
     let mut handles = vec![];
-    for _ in 0..connections {
+    for _ in 0..threads {
         let stats = stats.clone();
         let handle = tokio::spawn(async move {
-            worker(url, stats, end_time).await;
+            // Each thread manages multiple connections
+            let mut connection_handles = vec![];
+            for _ in 0..connections_per_thread {
+                let stats = stats.clone();
+                let h = tokio::spawn(async move {
+                    worker(url, stats, end_time).await;
+                });
+                connection_handles.push(h);
+            }
+            // Wait for all connections in this thread
+            for h in connection_handles {
+                let _ = h.await;
+            }
         });
         handles.push(handle);
     }
     
-    // Wait for duration
-    tokio::time::sleep(Duration::from_secs(duration_secs)).await;
+    // Wait for all threads
+    for handle in handles {
+        let _ = handle.await;
+    }
     
     // Final stats
     let total_requests = stats.requests.load(Ordering::Relaxed);
@@ -73,29 +89,45 @@ struct Stats {
 }
 
 async fn worker(addr: &str, stats: Arc<Stats>, end_time: Instant) {
-    let request = b"GET /index.html HTTP/1.1\r\nHost: localhost\r\n\r\n";
-    let mut buf = vec![0; 1024];
+    let request = b"GET / HTTP/1.1\r\nHost: localhost\r\nConnection: keep-alive\r\n\r\n";
+    let mut buf = vec![0; 4096];
     
-    while Instant::now() < end_time {
+    // Reuse connection
+    loop {
+        if Instant::now() >= end_time {
+            break;
+        }
+        
         match TcpStream::connect(addr).await {
             Ok(mut stream) => {
-                // Send request
-                if stream.write_all(request).await.is_ok() {
-                    // Read response
+                // Keep using this connection until it fails
+                loop {
+                    if Instant::now() >= end_time {
+                        break;
+                    }
+                    
+                    // Send request
+                    if stream.write_all(request).await.is_err() {
+                        break;
+                    }
+                    
+                    // Read response (minimal parsing)
                     match stream.read(&mut buf).await {
+                        Ok(0) => break, // Connection closed
                         Ok(_) => {
                             stats.requests.fetch_add(1, Ordering::Relaxed);
                         }
                         Err(_) => {
                             stats.errors.fetch_add(1, Ordering::Relaxed);
+                            break;
                         }
                     }
-                } else {
-                    stats.errors.fetch_add(1, Ordering::Relaxed);
                 }
             }
             Err(_) => {
                 stats.errors.fetch_add(1, Ordering::Relaxed);
+                // Brief pause before retry
+                tokio::time::sleep(Duration::from_millis(1)).await;
             }
         }
     }
