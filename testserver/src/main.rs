@@ -7,21 +7,30 @@ use tokio::time::interval;
 struct Stats {
     total_requests: AtomicU64,
     requests_this_second: AtomicU64,
+    long_body: bool,
 }
 
 async fn handler(stats: web::Data<Stats>) -> Result<HttpResponse> {
     stats.total_requests.fetch_add(1, Ordering::Relaxed);
     stats.requests_this_second.fetch_add(1, Ordering::Relaxed);
-    Ok(HttpResponse::Ok().body(
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla non ex tellus. Proin consectetur urna pretium interdum tempor. Etiam volutpat elit in felis lobortis, luctus pellentesque tellus efficitur. In orci neque, pellentesque vel magna sit amet, viverra lobortis nunc. Quisque quis massa quis dui dictum placerat. Donec bibendum ut augue ut posuere. Nunc quis nibh massa. Etiam aliquam sem ut enim rhoncus, at semper nibh vestibulum. Etiam rhoncus accumsan odio, a varius urna aliquet non. Mauris nulla risus, pretium eu vestibulum sit amet, imperdiet eu lacus. Suspendisse faucibus lectus ut nisl bibendum, at gravida risus tempus. Donec pharetra nisi eu lectus egestas, quis porttitor libero semper. Phasellus eu velit mi. Integer sit amet ullamcorper odio, ac feugiat sem. Cras hendrerit tortor a metus venenatis, a iaculis lorem volutpat.",
-    ))
+    if stats.long_body {
+        Ok(HttpResponse::Ok().body(
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla non ex tellus. Proin consectetur urna pretium interdum tempor. Etiam volutpat elit in felis lobortis, luctus pellentesque tellus efficitur. In orci neque, pellentesque vel magna sit amet, viverra lobortis nunc. Quisque quis massa quis dui dictum placerat. Donec bibendum ut augue ut posuere. Nunc quis nibh massa. Etiam aliquam sem ut enim rhoncus, at semper nibh vestibulum. Etiam rhoncus accumsan odio, a varius urna aliquet non. Mauris nulla risus, pretium eu vestibulum sit amet, imperdiet eu lacus. Suspendisse faucibus lectus ut nisl bibendum, at gravida risus tempus. Donec pharetra nisi eu lectus egestas, quis porttitor libero semper. Phasellus eu velit mi. Integer sit amet ullamcorper odio, ac feugiat sem. Cras hendrerit tortor a metus venenatis, a iaculis lorem volutpat.",
+        ))
+    } else {
+        Ok(HttpResponse::Ok().body("OK"))
+    }
 }
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    let args: Vec<String> = std::env::args().collect();
+    let long_body = args.contains(&"--long-body".to_string());
+
     let stats = Arc::new(Stats {
         total_requests: AtomicU64::new(0),
         requests_this_second: AtomicU64::new(0),
+        long_body,
     });
 
     // Spawn stats reporter.
