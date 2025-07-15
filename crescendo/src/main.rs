@@ -119,7 +119,8 @@ async fn worker(addr: &str, stats: Arc<Stats>) {
                     }
                 }
             }
-            Err(_) => {
+            Err(e) => {
+                println!("Error: {}", e);
                 stats.errors.fetch_add(1, Ordering::Relaxed);
             }
         }
