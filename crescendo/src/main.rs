@@ -4,6 +4,7 @@ use hyper::Request;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
+use std::hint::black_box;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -118,8 +119,8 @@ async fn worker(url: &str, stats: Arc<Stats>) {
                 stats.requests.fetch_add(1, Ordering::Relaxed);
                 // Consume the body to complete the request
                 let body = res.into_body();
-                let body_bytes = body.collect().await;
-                println!("Request completed: {:?}", body_bytes);
+                let _ = black_box(body.collect().await.unwrap());
+                // println!("Request completed: {:?}", body_bytes);
             }
             Err(e) => {
                 eprintln!("Request failed: {}", e);
