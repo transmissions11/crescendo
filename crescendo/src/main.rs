@@ -117,7 +117,8 @@ async fn worker(url: &str, stats: Arc<Stats>) {
             Ok(res) => {
                 stats.requests.fetch_add(1, Ordering::Relaxed);
                 // Consume the body to complete the request
-                // let _ = res.into_body();
+                let body = res.into_body();
+                println!("Request completed: {:?}", body);
             }
             Err(e) => {
                 eprintln!("Request failed: {}", e);
