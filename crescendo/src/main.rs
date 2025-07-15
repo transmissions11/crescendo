@@ -1,4 +1,4 @@
-use http_body_util::Empty;
+use http_body_util::{BodyExt, Empty};
 use hyper::body::Bytes;
 use hyper::Request;
 use hyper_util::client::legacy::connect::HttpConnector;
@@ -118,7 +118,8 @@ async fn worker(url: &str, stats: Arc<Stats>) {
                 stats.requests.fetch_add(1, Ordering::Relaxed);
                 // Consume the body to complete the request
                 let body = res.into_body();
-                println!("Request completed: {:?}", body);
+                let body_bytes = body.collect().await;
+                println!("Request completed: {:?}", body_bytes);
             }
             Err(e) => {
                 eprintln!("Request failed: {}", e);
