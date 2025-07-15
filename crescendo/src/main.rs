@@ -94,6 +94,7 @@ async fn worker(addr: &str, stats: Arc<Stats>) {
     let mut buf = vec![0; 512]; // Smaller buffer
 
     loop {
+        println!("entering...");
         match TcpStream::connect(addr).await {
             Ok(mut stream) => {
                 // Disable Nagle's algorithm for lower latency
@@ -123,5 +124,6 @@ async fn worker(addr: &str, stats: Arc<Stats>) {
                 stats.errors.fetch_add(1, Ordering::Relaxed);
             }
         }
+        println!("exiting...");
     }
 }
