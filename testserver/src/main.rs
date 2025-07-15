@@ -15,8 +15,8 @@ async fn handler(body: web::Bytes, stats: web::Data<Stats>) -> Result<HttpRespon
     stats.requests_this_second.fetch_add(1, Ordering::Relaxed);
 
     // Access the request body
-    let body_size = body.len();
-    println!("Received body of {} bytes", body_size);
+    let text = body.as_ascii_text().unwrap();
+    println!("Received body: {}", text);
 
     if stats.long_body.load(Ordering::Relaxed) {
         Ok(HttpResponse::Ok().body(
