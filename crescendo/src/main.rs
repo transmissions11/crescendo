@@ -7,14 +7,14 @@ use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let num_threads = 12;
+    let num_threads = 16;
     let connections_per_thread = 1024 / num_threads;
-    let duration_secs = 30;
+
     let url = "127.0.0.1:8080";
 
     println!(
-        "Running {} threads with {} connections each for {}s against http://{}/",
-        num_threads, connections_per_thread, duration_secs, url
+        "Running {} threads with {} connections each against http://{}/",
+        num_threads, connections_per_thread, url
     );
 
     let stats = Arc::new(Stats {
@@ -23,7 +23,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let start = Instant::now();
-    let end_time = start + Duration::from_secs(duration_secs);
 
     // Spawn stats thread
     let stats_clone = stats.clone();
@@ -37,10 +36,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             last_requests = requests;
 
             println!("Requests: {} | RPS: {} | Errors: {}", requests, rps, errors);
-
-            if Instant::now() >= end_time {
-                break;
-            }
         }
     });
 
@@ -56,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 for _ in 0..connections_per_thread {
                     let stats = stats.clone();
                     let task = tokio::spawn(async move {
-                        worker(url, stats, end_time).await;
+                        worker(url, stats).await;
                     });
                     tasks.push(task);
                 }
@@ -94,11 +89,11 @@ struct Stats {
     errors: AtomicU64,
 }
 
-async fn worker(addr: &str, stats: Arc<Stats>, end_time: Instant) {
+async fn worker(addr: &str, stats: Arc<Stats>) {
     let request = b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n";
     let mut buf = vec![0; 512]; // Smaller buffer
 
-    while Instant::now() < end_time {
+    loop {
         match TcpStream::connect(addr).await {
             Ok(mut stream) => {
                 // Disable Nagle's algorithm for lower latency
@@ -106,10 +101,6 @@ async fn worker(addr: &str, stats: Arc<Stats>, end_time: Instant) {
 
                 // Pipeline multiple requests on same connection
                 loop {
-                    if Instant::now() >= end_time {
-                        break;
-                    }
-
                     // Send request
                     if stream.write_all(request).await.is_err() {
                         break;
