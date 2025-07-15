@@ -48,7 +48,7 @@ async fn main() -> std::io::Result<()> {
                 last_total = total;
 
                 println!(
-                    "Total: {} | RPS: {} | Last Second: {}",
+                    "Total: {:,} | RPS: {:,} | Last Second: {:,}",
                     total, rps, current_second
                 );
             }
