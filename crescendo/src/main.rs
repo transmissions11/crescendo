@@ -8,7 +8,7 @@ use tokio::runtime::Runtime;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let num_threads = 14;
-    let connections_per_thread = 1024 / num_threads;
+    let connections_per_thread = 400 / num_threads;
 
     let url = "127.0.0.1:8080";
 
@@ -94,7 +94,6 @@ async fn worker(addr: &str, stats: Arc<Stats>) {
     let mut buf = vec![0; 512]; // Smaller buffer
 
     loop {
-        println!("entering...");
         match TcpStream::connect(addr).await {
             Ok(mut stream) => {
                 // Disable Nagle's algorithm for lower latency
@@ -124,6 +123,5 @@ async fn worker(addr: &str, stats: Arc<Stats>) {
                 stats.errors.fetch_add(1, Ordering::Relaxed);
             }
         }
-        println!("exiting...");
     }
 }
