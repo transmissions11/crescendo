@@ -1,5 +1,5 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Result};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
@@ -7,13 +7,13 @@ use tokio::time::interval;
 struct Stats {
     total_requests: AtomicU64,
     requests_this_second: AtomicU64,
-    long_body: bool,
+    long_body: AtomicBool,
 }
 
 async fn handler(stats: web::Data<Stats>) -> Result<HttpResponse> {
     stats.total_requests.fetch_add(1, Ordering::Relaxed);
     stats.requests_this_second.fetch_add(1, Ordering::Relaxed);
-    if stats.long_body {
+    if stats.long_body.load(Ordering::Relaxed) {
         Ok(HttpResponse::Ok().body(
             "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla non ex tellus. Proin consectetur urna pretium interdum tempor. Etiam volutpat elit in felis lobortis, luctus pellentesque tellus efficitur. In orci neque, pellentesque vel magna sit amet, viverra lobortis nunc. Quisque quis massa quis dui dictum placerat. Donec bibendum ut augue ut posuere. Nunc quis nibh massa. Etiam aliquam sem ut enim rhoncus, at semper nibh vestibulum. Etiam rhoncus accumsan odio, a varius urna aliquet non. Mauris nulla risus, pretium eu vestibulum sit amet, imperdiet eu lacus. Suspendisse faucibus lectus ut nisl bibendum, at gravida risus tempus. Donec pharetra nisi eu lectus egestas, quis porttitor libero semper. Phasellus eu velit mi. Integer sit amet ullamcorper odio, ac feugiat sem. Cras hendrerit tortor a metus venenatis, a iaculis lorem volutpat.",
         ))
@@ -25,12 +25,12 @@ async fn handler(stats: web::Data<Stats>) -> Result<HttpResponse> {
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    let long_body = args.contains(&"--long-body".to_string());
+    let initial_long_body = args.contains(&"--long-body".to_string());
 
     let stats = Arc::new(Stats {
         total_requests: AtomicU64::new(0),
         requests_this_second: AtomicU64::new(0),
-        long_body,
+        long_body: AtomicBool::new(initial_long_body),
     });
 
     // Spawn stats reporter.
@@ -51,6 +51,21 @@ async fn main() -> std::io::Result<()> {
                     "Total: {} | RPS: {} | Last Second: {}",
                     total, rps, current_second
                 );
+            }
+        }
+    });
+
+    // Spawn long body toggler.
+    tokio::spawn({
+        let stats = stats.clone();
+        async move {
+            let mut interval = interval(Duration::from_secs(5));
+            loop {
+                interval.tick().await;
+                let current = stats.long_body.load(Ordering::Relaxed);
+                let new_value = !current;
+                stats.long_body.store(new_value, Ordering::Relaxed);
+                println!("Long body switched to: {}", new_value);
             }
         }
     });
