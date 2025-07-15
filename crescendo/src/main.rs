@@ -57,6 +57,7 @@ async fn worker(addr: &str) {
     let request = b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n";
 
     loop {
+        println!("Connecting to {}", addr);
         match TcpStream::connect(addr).await {
             Ok(mut stream) => {
                 // Disable Nagle's algorithm for lower latency
