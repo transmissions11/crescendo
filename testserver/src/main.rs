@@ -1,4 +1,5 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Result};
+use std::hint::black_box;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,8 +16,7 @@ async fn handler(body: web::Bytes, stats: web::Data<Stats>) -> Result<HttpRespon
     stats.requests_this_second.fetch_add(1, Ordering::Relaxed);
 
     // Access the request body
-    let text = String::from_utf8_lossy(&body).to_string();
-    println!("Received body: {}", text);
+    let _ = black_box(String::from_utf8_lossy(&body).to_string());
 
     if stats.long_body.load(Ordering::Relaxed) {
         Ok(HttpResponse::Ok().body(
