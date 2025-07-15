@@ -2,8 +2,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
-use std::io::{Read, Write};
-use std::net::TcpStream;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
+use tokio::runtime::Runtime;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let num_threads = 12;
@@ -48,7 +49,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for _ in 0..num_threads {
         let stats = stats.clone();
         let handle = thread::spawn(move || {
-            worker_thread(url, connections_per_thread, stats, end_time);
+            // Create a runtime for this thread
+            let rt = Runtime::new().unwrap();
+            rt.block_on(async {
+                let mut tasks = vec![];
+                for _ in 0..connections_per_thread {
+                    let stats = stats.clone();
+                    let task = tokio::spawn(async move {
+                        worker(url, stats, end_time).await;
+                    });
+                    tasks.push(task);
+                }
+                // Wait for all tasks
+                for task in tasks {
+                    let _ = task.await;
+                }
+            });
         });
         handles.push(handle);
     }
@@ -78,50 +94,42 @@ struct Stats {
     errors: AtomicU64,
 }
 
-fn worker_thread(addr: &str, num_connections: usize, stats: Arc<Stats>, end_time: Instant) {
+async fn worker(addr: &str, stats: Arc<Stats>, end_time: Instant) {
     let request = b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n";
-    
-    // Run connections sequentially in this thread
-    for _ in 0..num_connections {
-        if Instant::now() >= end_time {
-            break;
-        }
-        
-        // Keep reconnecting and sending requests
-        while Instant::now() < end_time {
-            match TcpStream::connect(addr) {
-                Ok(mut stream) => {
-                    stream.set_nodelay(true).ok();
-                    let mut buf = [0u8; 256];
-                    
-                    // Send requests on this connection until it fails or time is up
-                    loop {
-                        if Instant::now() >= end_time {
-                            break;
+    let mut buf = vec![0; 512]; // Smaller buffer
+
+    while Instant::now() < end_time {
+        match TcpStream::connect(addr).await {
+            Ok(mut stream) => {
+                // Disable Nagle's algorithm for lower latency
+                let _ = stream.set_nodelay(true);
+
+                // Pipeline multiple requests on same connection
+                loop {
+                    if Instant::now() >= end_time {
+                        break;
+                    }
+
+                    // Send request
+                    if stream.write_all(request).await.is_err() {
+                        break;
+                    }
+
+                    // Read minimal response
+                    match stream.read(&mut buf).await {
+                        Ok(0) => break,
+                        Ok(_) => {
+                            stats.requests.fetch_add(1, Ordering::Relaxed);
                         }
-                        
-                        // Send request
-                        if stream.write_all(request).is_err() {
+                        Err(_) => {
+                            stats.errors.fetch_add(1, Ordering::Relaxed);
                             break;
-                        }
-                        
-                        // Read response header only
-                        match stream.read(&mut buf) {
-                            Ok(0) => break,
-                            Ok(_) => {
-                                stats.requests.fetch_add(1, Ordering::Relaxed);
-                            }
-                            Err(_) => {
-                                stats.errors.fetch_add(1, Ordering::Relaxed);
-                                break;
-                            }
                         }
                     }
                 }
-                Err(_) => {
-                    stats.errors.fetch_add(1, Ordering::Relaxed);
-                    thread::sleep(Duration::from_millis(10));
-                }
+            }
+            Err(_) => {
+                stats.errors.fetch_add(1, Ordering::Relaxed);
             }
         }
     }
