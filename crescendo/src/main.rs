@@ -1,6 +1,7 @@
 use http::StatusCode;
 use http_body_util::{BodyExt, Empty, Full};
 use hyper::body::Bytes;
+use hyper::client::conn;
 use hyper::Request;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
@@ -89,46 +90,37 @@ struct Stats {
 async fn worker(url: &str, stats: Arc<Stats>) {
     // Create HTTP client with connection pooling
     let mut connector = HttpConnector::new();
+
     connector.set_nodelay(true);
     connector.set_keepalive(Some(Duration::from_secs(60)));
 
-    let client: Client<_, Full<Bytes>> = Client::builder(TokioExecutor::new())
+    let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
         .pool_idle_timeout(Duration::from_secs(90))
         .pool_max_idle_per_host(100)
         .retry_canceled_requests(true)
         .set_host(false)
         .build(connector);
 
-    loop {
-        // Create request
-        let req = match Request::builder()
-            .uri(url)
-            .header("Host", "localhost")
-            .body(Full::new(Bytes::from("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla non ex tellus. Proin consectetur urna pretium interdum tempor. Etiam volutpat elit in felis lobortis, luctus pellentesque tellus efficitur. In orci neque, pellentesque vel magna sit amet, viverra lobortis nunc. Quisque quis massa quis dui dictum placerat. Donec bibendum ut augue ut posuere. Nunc quis nibh massa. Etiam aliquam sem ut enim rhoncus, at semper nibh vestibulum. Etiam rhoncus accumsan odio, a varius urna aliquet non. Mauris nulla risus, pretium eu vestibulum sit amet, imperdiet eu lacus. Suspendisse faucibus lectus ut nisl bibendum, at gravida risus tempus. Donec pharetra nisi eu lectus egestas, quis porttitor libero semper. Phasellus eu velit mi. Integer sit amet ullamcorper odio, ac feugiat sem. Cras hendrerit tortor a metus venenatis, a iaculis lorem volutpat.")))
-        {
-            Ok(req) => req,
-            Err(e) => {
-                eprintln!("Failed to build request: {}", e);
-                stats.errors.fetch_add(1, Ordering::Relaxed);
-                continue;
-            }
-        };
+    let req = Request::builder()
+        .uri(url)
+        .header("Host", "localhost")
+        .body(Empty::<Bytes>::new())
+        .unwrap();
 
-        // Send request
-        match client.request(req).await {
+    loop {
+        match client.request(req.clone()).await {
             Ok(res) => {
                 if res.status() == StatusCode::OK {
                     stats.requests.fetch_add(1, Ordering::Relaxed);
                 } else {
-                    println!("Request failed: {:?}", res);
+                    println!("Request did not have OK status: {:?}", res);
                     stats.errors.fetch_add(1, Ordering::Relaxed);
                 }
             }
             Err(e) => {
                 eprintln!("Request failed: {}", e);
                 stats.errors.fetch_add(1, Ordering::Relaxed);
-                // Small backoff on error
-                tokio::time::sleep(Duration::from_millis(10)).await;
+                tokio::time::sleep(Duration::from_millis(10)).await; // Small backoff on error.
             }
         }
     }
