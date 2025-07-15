@@ -118,7 +118,16 @@ async fn worker(url: &str, stats: Arc<Stats>) {
         match client.request(req).await {
             Ok(res) => {
                 if res.status() == StatusCode::OK {
-                    stats.requests.fetch_add(1, Ordering::Relaxed);
+                    // Get the response body
+                    match http_body_util::BodyExt::collect(res.into_body()).await {
+                        Ok(_body) => {
+                            stats.requests.fetch_add(1, Ordering::Relaxed);
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to read response body: {}", e);
+                            stats.errors.fetch_add(1, Ordering::Relaxed);
+                        }
+                    }
                 } else {
                     println!("Request failed: {:?}", res);
                     stats.errors.fetch_add(1, Ordering::Relaxed);
