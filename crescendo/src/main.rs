@@ -112,7 +112,8 @@ async fn worker(addr: &str, stats: Arc<Stats>) {
                         Ok(_) => {
                             stats.requests.fetch_add(1, Ordering::Relaxed);
                         }
-                        Err(_) => {
+                        Err(e) => {
+                            println!("TCP Read Error: {}", e);
                             stats.errors.fetch_add(1, Ordering::Relaxed);
                             break;
                         }
@@ -120,7 +121,7 @@ async fn worker(addr: &str, stats: Arc<Stats>) {
                 }
             }
             Err(e) => {
-                println!("Error: {}", e);
+                println!("TCP Connection Error: {}", e);
                 stats.errors.fetch_add(1, Ordering::Relaxed);
             }
         }
