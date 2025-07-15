@@ -48,8 +48,10 @@ async fn main() -> std::io::Result<()> {
                 last_total = total;
 
                 println!(
-                    "Total: {:,} | RPS: {:,} | Last Second: {:,}",
-                    total, rps, current_second
+                    "Total: {} | RPS: {} | Last Second: {}",
+                    format_with_commas(total),
+                    format_with_commas(rps),
+                    format_with_commas(current_second)
                 );
             }
         }
@@ -82,4 +84,20 @@ async fn main() -> std::io::Result<()> {
     .bind("127.0.0.1:8080")?
     .run()
     .await
+}
+
+fn format_with_commas(n: u64) -> String {
+    let s = n.to_string();
+    let mut result = String::new();
+    let mut chars: Vec<char> = s.chars().collect();
+    chars.reverse();
+
+    for (i, c) in chars.iter().enumerate() {
+        if i > 0 && i % 3 == 0 {
+            result.push(',');
+        }
+        result.push(*c);
+    }
+
+    result.chars().rev().collect()
 }
