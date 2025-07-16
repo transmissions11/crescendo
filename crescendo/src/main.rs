@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use thousands::Separable;
 
-#[tokio::main]
+#[tokio::main(worker_threads = 1)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let num_threads = 1;
     let connections_per_thread = 4096 / num_threads;
