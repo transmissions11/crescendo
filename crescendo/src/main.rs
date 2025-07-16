@@ -50,28 +50,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Create a single shared HTTP client with proper connection pooling
-    let mut connector = HttpConnector::new();
-    connector.set_nodelay(true);
-    connector.set_keepalive(Some(Duration::from_secs(60)));
-
-    let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
-        .pool_idle_timeout(Duration::from_secs(90))
-        .pool_max_idle_per_host(1000) // Allow many connections to the same host
-        .http2_only(false) // HTTP/1.1 is often better for load testing
-        .retry_canceled_requests(true)
-        .set_host(false)
-        .build(connector);
-
-    let client = Arc::new(client);
-
     // Spawn all worker tasks
     let mut tasks = vec![];
     for _ in 0..total_connections {
-        let client = Arc::clone(&client);
         let stats = Arc::clone(&stats);
         let task = tokio::spawn(async move {
-            worker(url, client, stats).await;
+            worker(url, stats).await;
         });
         tasks.push(task);
     }
@@ -89,7 +73,20 @@ struct Stats {
     errors: AtomicU64,
 }
 
-async fn worker(url: &str, client: Arc<Client<HttpConnector, Empty<Bytes>>>, stats: Arc<Stats>) {
+async fn worker(url: &str, stats: Arc<Stats>) {
+    // Create a single shared HTTP client with proper connection pooling
+    let mut connector = HttpConnector::new();
+    connector.set_nodelay(true);
+    connector.set_keepalive(Some(Duration::from_secs(60)));
+
+    let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
+        .pool_idle_timeout(Duration::from_secs(90))
+        .pool_max_idle_per_host(1000) // Allow many connections to the same host
+        .http2_only(false) // HTTP/1.1 is often better for load testing
+        .retry_canceled_requests(true)
+        .set_host(false)
+        .build(connector);
+
     let req = Request::builder()
         .uri(url)
         .header("Host", "localhost")
