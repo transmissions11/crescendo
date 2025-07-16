@@ -1,12 +1,10 @@
 use http::StatusCode;
-use http_body_util::{BodyExt, Empty, Full};
+use http_body_util::Empty;
 use hyper::body::Bytes;
-use hyper::client::conn;
 use hyper::Request;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
-use std::hint::black_box;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
