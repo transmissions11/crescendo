@@ -14,11 +14,13 @@ use tokio::time;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let total_connections = 4096;
+    let connections_per_client = 16; // Each HTTP client handles 16 connections
+    let num_clients = total_connections / connections_per_client;
     let url = "http://127.0.0.1:8080/";
 
     println!(
-        "Running {} concurrent connections against {}",
-        total_connections, url
+        "Running {} concurrent connections with {} HTTP clients against {}",
+        total_connections, num_clients, url
     );
 
     let stats = Arc::new(Stats {
@@ -50,25 +52,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Create a single shared HTTP client with proper connection pooling
-    let mut connector = HttpConnector::new();
-    connector.set_nodelay(true);
-    connector.set_keepalive(Some(Duration::from_secs(60)));
+    // Create multiple HTTP clients to reduce contention
+    let mut clients = Vec::new();
+    for _ in 0..num_clients {
+        let mut connector = HttpConnector::new();
+        connector.set_nodelay(true);
+        connector.set_keepalive(Some(Duration::from_secs(60)));
 
-    let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
-        .pool_idle_timeout(Duration::from_secs(90))
-        .pool_max_idle_per_host(1000) // Allow many connections to the same host
-        .http2_only(false) // HTTP/1.1 is often better for load testing
-        .retry_canceled_requests(true)
-        .set_host(false)
-        .build(connector);
+        let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
+            .pool_idle_timeout(Duration::from_secs(90))
+            .pool_max_idle_per_host(connections_per_client * 2) // Allow some headroom
+            .http2_only(false)
+            .retry_canceled_requests(true)
+            .set_host(false)
+            .build(connector);
 
-    let client = Arc::new(client);
+        clients.push(Arc::new(client));
+    }
 
-    // Spawn all worker tasks
+    // Spawn all worker tasks, distributing them across clients
     let mut tasks = vec![];
-    for _ in 0..total_connections {
-        let client = Arc::clone(&client);
+    for i in 0..total_connections {
+        let client = Arc::clone(&clients[i % num_clients]);
         let stats = Arc::clone(&stats);
         let task = tokio::spawn(async move {
             worker(url, client, stats).await;
