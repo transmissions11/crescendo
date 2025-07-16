@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for _ in 0..num_threads {
         let handle = std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
+            let rt = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .worker_threads(2)
                 .build()
