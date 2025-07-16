@@ -14,7 +14,7 @@ use tokio::time;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let total_connections = 4096;
-    let connections_per_client = 16; // Each HTTP client handles 16 connections
+    let connections_per_client = 32; // Each HTTP client handles 16 connections
     let num_clients = total_connections / connections_per_client;
     let url = "http://127.0.0.1:8080/";
 
