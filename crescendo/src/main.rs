@@ -1,91 +1,33 @@
-use http::StatusCode;
-use http_body_util::Empty;
-use hyper::body::Bytes;
-use hyper::Request;
-use hyper_util::client::legacy::connect::HttpConnector;
-use hyper_util::client::legacy::Client;
-use hyper_util::rt::TokioExecutor;
-use rlimit::Resource;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
 use std::time::Duration;
-use std::{cmp, io};
-use thousands::Separable;
 
 const TOTAL_CONNECTIONS: u64 = 4096;
+const TARGET_URL: &str = "http://127.0.0.1:8080";
 
-pub fn increase_nofile_limit() -> io::Result<u64> {
-    let (soft, hard) = Resource::NOFILE.get()?;
-    println!("At startup, file descriptor limit:            soft = {soft}, hard = {hard}");
-
-    let safe_limit = TOTAL_CONNECTIONS * 10;
-    if hard < safe_limit {
-        panic!(
-            "File descriptor hard limit is too low. Please increase it to at least {}.",
-            safe_limit
-        );
-    }
-
-    if soft != hard {
-        Resource::NOFILE.set(hard, hard)?; // Just max things out to give us plenty of overhead.
-
-        let (soft, hard) = Resource::NOFILE.get()?;
-        println!("After increasingm file descriptor limit:  soft = {soft}, hard = {hard}");
-    }
-
-    Ok(soft)
-}
+mod stats;
+mod utils;
+mod worker;
 
 #[tokio::main(worker_threads = 1)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let num_threads = num_cpus::get() as u64;
     let connections_per_thread = TOTAL_CONNECTIONS / num_threads;
 
-    match increase_nofile_limit() {
-        Ok(soft) => println!("File descriptor limit is set to {soft}."),
-        Err(err) => println!("Failed to increase file descriptor limit: {err}."),
+    if let Err(err) = utils::increase_nofile_limit(TOTAL_CONNECTIONS * 10) {
+        println!("Failed to increase file descriptor limit: {err}.");
     }
 
-    let url = "http://127.0.0.1:8080/";
-
     println!(
-        "Running {} threads with {} connections each against {}",
-        num_threads, connections_per_thread, url
+        "Running {} threads with {} connections each against {}...",
+        num_threads, connections_per_thread, TARGET_URL
     );
 
-    let stats = Arc::new(Stats {
-        requests: AtomicU64::new(0),
-        errors: AtomicU64::new(0),
-    });
-
-    // Start monitoring task
-    let stats_clone = Arc::clone(&stats);
-    tokio::spawn(async move {
-        let mut last_requests = 0u64;
-        let mut last_errors = 0u64;
-        loop {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-            let requests = stats_clone.requests.load(Ordering::Relaxed);
-            let errors = stats_clone.errors.load(Ordering::Relaxed);
-            let rps = requests - last_requests;
-            let eps = errors - last_errors;
-            println!(
-                "RPS: {}, EPS: {}, Total requests: {}, Total errors: {}",
-                rps.separate_with_commas(),
-                eps.separate_with_commas(),
-                requests.separate_with_commas(),
-                errors.separate_with_commas()
-            );
-            last_requests = requests;
-            last_errors = errors;
-        }
-    });
+    // Start a reporter task with a 1 second measurement/logging interval.
+    tokio::spawn(stats::STATS.start_reporter(Duration::from_secs(1)));
 
     // Spawn all worker threads
     let mut handles = vec![];
 
     for _ in 0..num_threads {
-        let stats = Arc::clone(&stats);
         let handle = std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -94,10 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             rt.block_on(async {
                 let mut tasks = vec![];
                 for _ in 0..connections_per_thread {
-                    let stats = Arc::clone(&stats);
-                    let task = tokio::spawn(async move {
-                        worker(url, stats).await;
-                    });
+                    let task = tokio::spawn(worker::connection_worker(TARGET_URL));
                     tasks.push(task);
                 }
 
@@ -116,43 +55,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
-}
-
-struct Stats {
-    requests: AtomicU64,
-    errors: AtomicU64,
-}
-
-async fn worker(url: &str, stats: Arc<Stats>) {
-    let mut connector = HttpConnector::new();
-    connector.set_nodelay(true);
-    connector.set_keepalive(Some(Duration::from_secs(60)));
-
-    let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
-        .pool_idle_timeout(Duration::from_secs(90))
-        .pool_max_idle_per_host(100)
-        .build(connector);
-
-    let req = Request::builder()
-        .uri(url)
-        .body(Empty::<Bytes>::new())
-        .unwrap();
-
-    loop {
-        match client.request(req.clone()).await {
-            Ok(res) => {
-                if res.status() == StatusCode::OK {
-                    stats.requests.fetch_add(1, Ordering::Relaxed);
-                } else {
-                    println!("Request did not have OK status: {:?}", res);
-                    stats.errors.fetch_add(1, Ordering::Relaxed);
-                }
-            }
-            Err(e) => {
-                eprintln!("Request failed: {}", e);
-                stats.errors.fetch_add(1, Ordering::Relaxed);
-                tokio::time::sleep(Duration::from_millis(10)).await; // Small backoff on error.
-            }
-        }
-    }
 }
