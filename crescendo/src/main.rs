@@ -87,7 +87,6 @@ async fn worker(url: &str, stats: Arc<Stats>) {
         .pool_idle_timeout(Duration::from_secs(90))
         .pool_max_idle_per_host(100)
         .retry_canceled_requests(true)
-        .set_host(false)
         .build(connector);
 
     let req = Request::builder()
