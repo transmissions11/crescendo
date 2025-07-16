@@ -83,11 +83,7 @@ async fn worker(url: &str, stats: Arc<Stats>) {
     connector.set_nodelay(true);
     connector.set_keepalive(Some(Duration::from_secs(60)));
 
-    let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
-        .pool_idle_timeout(Duration::from_secs(90))
-        .pool_max_idle_per_host(100)
-        .retry_canceled_requests(false)
-        .build(connector);
+    let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new()).build(connector);
 
     let req = Request::builder()
         .uri(url)
