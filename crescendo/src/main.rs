@@ -29,11 +29,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start monitoring task
     let stats_clone = Arc::clone(&stats);
-    std::thread::spawn(move || {
+    tokio::spawn(async move {
         let mut last_requests = 0u64;
         let mut last_errors = 0u64;
         loop {
-            std::thread::sleep(Duration::from_secs(1));
+            tokio::time::sleep(Duration::from_secs(1)).await;
             let requests = stats_clone.requests.load(Ordering::Relaxed);
             let errors = stats_clone.errors.load(Ordering::Relaxed);
             let rps = requests - last_requests;
