@@ -12,14 +12,13 @@ use thousands::Separable;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let num_threads = 128;
-    let connections_per_thread = 4096 / num_threads;
+    let num_connections = 4096;
 
     let url = "http://127.0.0.1:8080/";
 
     println!(
-        "Running {} threads with {} connections each against {}",
-        num_threads, connections_per_thread, url
+        "Running {} connections (one thread per connection) against {}",
+        num_connections, url
     );
 
     let stats = Arc::new(Stats {
@@ -50,27 +49,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Spawn all worker threads
+    // Spawn all worker threads (one per connection)
     let mut handles = vec![];
 
-    for _ in 0..num_threads {
+    for _ in 0..num_connections {
         let stats = Arc::clone(&stats);
         let handle = std::thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(async {
-                let mut tasks = vec![];
-                for _ in 0..connections_per_thread {
-                    let stats = Arc::clone(&stats);
-                    let task = tokio::spawn(async move {
-                        worker(url, stats).await;
-                    });
-                    tasks.push(task);
-                }
-
-                // Wait for all tasks (this will run forever since workers loop infinitely)
-                for task in tasks {
-                    let _ = task.await;
-                }
+                worker(url, stats).await;
             });
         });
         handles.push(handle);
