@@ -3,9 +3,6 @@ name = "crescendo"
 version = "0.1.0"
 edition = "2021"
 
-[profile.release]
-debug = true  # Enable debug symbols in release mode
-
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 hyper = { version = "1", features = ["full"] }
