@@ -12,7 +12,7 @@ use thousands::Separable;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let num_connections = 4096;
+    let num_connections = 128;
 
     let url = "http://127.0.0.1:8080/";
 
