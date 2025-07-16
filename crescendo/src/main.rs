@@ -7,18 +7,19 @@ use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::thread;
 use std::time::{Duration, Instant};
 use thousands::Separable;
-use tokio::time;
+use tokio::runtime::Runtime;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let total_connections = 4096;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let num_threads = 128;
+    let connections_per_thread = 4096 / num_threads;
     let url = "http://127.0.0.1:8080/";
 
     println!(
-        "Running {} concurrent connections against {}",
-        total_connections, url
+        "Running {} threads with {} connections each against {}",
+        num_threads, connections_per_thread, url
     );
 
     let stats = Arc::new(Stats {
@@ -26,14 +27,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         errors: AtomicU64::new(0),
     });
 
-    // Start monitoring task
+    // Start monitoring thread
     let stats_clone = Arc::clone(&stats);
-    tokio::spawn(async move {
+    thread::spawn(move || {
         let mut last_requests = 0u64;
         let mut last_errors = 0u64;
-        let mut interval = time::interval(Duration::from_secs(1));
         loop {
-            interval.tick().await;
+            thread::sleep(Duration::from_secs(1));
             let requests = stats_clone.requests.load(Ordering::Relaxed);
             let errors = stats_clone.errors.load(Ordering::Relaxed);
             let rps = requests - last_requests;
@@ -50,32 +50,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Spawn all worker tasks, each with its own client
-    let mut tasks = vec![];
-    for _ in 0..total_connections {
+    // Spawn worker threads
+    let mut handles = vec![];
+    for _ in 0..num_threads {
         let stats = Arc::clone(&stats);
-        let task = tokio::spawn(async move {
-            // Each worker creates its own client - no sharing, no contention
-            let mut connector = HttpConnector::new();
-            connector.set_nodelay(true);
-            connector.set_keepalive(Some(Duration::from_secs(60)));
+        let handle = thread::spawn(move || {
+            // Create a runtime for this thread
+            let rt = Runtime::new().unwrap();
+            rt.block_on(async {
+                let mut tasks = vec![];
+                for _ in 0..connections_per_thread {
+                    let stats = Arc::clone(&stats);
+                    let task = tokio::spawn(async move {
+                        // Each task gets its own client
+                        let mut connector = HttpConnector::new();
+                        connector.set_nodelay(true);
+                        connector.set_keepalive(Some(Duration::from_secs(60)));
 
-            let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
-                .pool_idle_timeout(Duration::from_secs(90))
-                .pool_max_idle_per_host(100)
-                .http2_only(false)
-                .retry_canceled_requests(true)
-                .set_host(false)
-                .build(connector);
+                        let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
+                            .pool_idle_timeout(Duration::from_secs(90))
+                            .pool_max_idle_per_host(100)
+                            .retry_canceled_requests(true)
+                            .set_host(false)
+                            .build(connector);
 
-            worker(url, client, stats).await;
+                        worker(url, client, stats).await;
+                    });
+                    tasks.push(task);
+                }
+                // Wait for all tasks
+                for task in tasks {
+                    let _ = task.await;
+                }
+            });
         });
-        tasks.push(task);
+        handles.push(handle);
     }
 
-    // Wait for all tasks (they run forever, so this blocks indefinitely)
-    for task in tasks {
-        let _ = task.await;
+    // Wait for all threads
+    for handle in handles {
+        handle.join().unwrap();
     }
 
     Ok(())
@@ -99,16 +113,14 @@ async fn worker(url: &str, client: Client<HttpConnector, Empty<Bytes>>, stats: A
                 if res.status() == StatusCode::OK {
                     stats.requests.fetch_add(1, Ordering::Relaxed);
                 } else {
-                    eprintln!("Request did not have OK status: {:?}", res);
+                    println!("Request did not have OK status: {:?}", res);
                     stats.errors.fetch_add(1, Ordering::Relaxed);
                 }
-                // Don't consume body if we don't need to - saves time
             }
             Err(e) => {
                 eprintln!("Request failed: {}", e);
                 stats.errors.fetch_add(1, Ordering::Relaxed);
-                // Small backoff on error to avoid hammering a failing server
-                tokio::time::sleep(Duration::from_millis(10)).await;
+                tokio::time::sleep(Duration::from_millis(10)).await; // Small backoff on error.
             }
         }
     }
