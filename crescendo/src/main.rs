@@ -1,16 +1,15 @@
 use http::StatusCode;
-use http_body_util::{BodyExt, Empty, Full};
+use http_body_util::Empty;
 use hyper::body::Bytes;
-use hyper::client::conn;
 use hyper::Request;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
-use std::hint::black_box;
+
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use thousands::Separable;
 use tokio::runtime::Runtime;
 
@@ -107,6 +106,7 @@ async fn worker(url: &str, stats: Arc<Stats>) {
     let req = Request::builder()
         .uri(url)
         .header("Host", "localhost")
+        .header("Connection", "keep-alive")
         .body(Empty::<Bytes>::new())
         .unwrap();
 
