@@ -14,13 +14,11 @@ use tokio::time;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let total_connections = 4096;
-    let connections_per_client = 4; // Each HTTP client handles 16 connections
-    let num_clients = total_connections / connections_per_client;
     let url = "http://127.0.0.1:8080/";
 
     println!(
-        "Running {} concurrent connections with {} HTTP clients against {}",
-        total_connections, num_clients, url
+        "Running {} concurrent connections against {}",
+        total_connections, url
     );
 
     let stats = Arc::new(Stats {
@@ -52,30 +50,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Create multiple HTTP clients to reduce contention
-    let mut clients = Vec::new();
-    for _ in 0..num_clients {
-        let mut connector = HttpConnector::new();
-        connector.set_nodelay(true);
-        connector.set_keepalive(Some(Duration::from_secs(60)));
-
-        let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
-            .pool_idle_timeout(Duration::from_secs(90))
-            .pool_max_idle_per_host(connections_per_client * 2) // Allow some headroom
-            .http2_only(false)
-            .retry_canceled_requests(true)
-            .set_host(false)
-            .build(connector);
-
-        clients.push(Arc::new(client));
-    }
-
-    // Spawn all worker tasks, distributing them across clients
+    // Spawn all worker tasks, each with its own client
     let mut tasks = vec![];
-    for i in 0..total_connections {
-        let client = Arc::clone(&clients[i % num_clients]);
+    for _ in 0..total_connections {
         let stats = Arc::clone(&stats);
         let task = tokio::spawn(async move {
+            // Each worker creates its own client - no sharing, no contention
+            let mut connector = HttpConnector::new();
+            connector.set_nodelay(true);
+            connector.set_keepalive(Some(Duration::from_secs(60)));
+
+            let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
+                .pool_idle_timeout(Duration::from_secs(90))
+                .pool_max_idle_per_host(100)
+                .http2_only(false)
+                .retry_canceled_requests(true)
+                .set_host(false)
+                .build(connector);
+
             worker(url, client, stats).await;
         });
         tasks.push(task);
@@ -94,7 +86,7 @@ struct Stats {
     errors: AtomicU64,
 }
 
-async fn worker(url: &str, client: Arc<Client<HttpConnector, Empty<Bytes>>>, stats: Arc<Stats>) {
+async fn worker(url: &str, client: Client<HttpConnector, Empty<Bytes>>, stats: Arc<Stats>) {
     let req = Request::builder()
         .uri(url)
         .header("Host", "localhost")
@@ -104,15 +96,19 @@ async fn worker(url: &str, client: Arc<Client<HttpConnector, Empty<Bytes>>>, sta
     loop {
         match client.request(req.clone()).await {
             Ok(res) => {
-                // Consume the body to ensure the connection can be reused
-                let _ = res.into_body().collect().await;
-                stats.requests.fetch_add(1, Ordering::Relaxed);
+                if res.status() == StatusCode::OK {
+                    stats.requests.fetch_add(1, Ordering::Relaxed);
+                } else {
+                    eprintln!("Request did not have OK status: {:?}", res);
+                    stats.errors.fetch_add(1, Ordering::Relaxed);
+                }
+                // Don't consume body if we don't need to - saves time
             }
             Err(e) => {
                 eprintln!("Request failed: {}", e);
                 stats.errors.fetch_add(1, Ordering::Relaxed);
                 // Small backoff on error to avoid hammering a failing server
-                tokio::time::sleep(Duration::from_millis(100)).await;
+                tokio::time::sleep(Duration::from_millis(10)).await;
             }
         }
     }
