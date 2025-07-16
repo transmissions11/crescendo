@@ -56,9 +56,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for _ in 0..num_threads {
         let stats = Arc::clone(&stats);
         let handle = std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_multi_thread()
+            let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
-                .worker_threads(1)
                 .build()
                 .unwrap();
             rt.block_on(async {
