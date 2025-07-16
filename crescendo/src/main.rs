@@ -5,15 +5,37 @@ use hyper::Request;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
+use rlimit::Resource;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+use std::{cmp, io};
 use thousands::Separable;
+
+const DEFAULT_NOFILE_LIMIT: u64 = u64::MAX;
+
+pub fn increase_nofile_limit() -> io::Result<u64> {
+    let (soft, hard) = Resource::NOFILE.get()?;
+    println!("Before increasing: soft   = {soft}, hard = {hard}");
+
+    let target = cmp::min(DEFAULT_NOFILE_LIMIT, hard);
+    println!("Try to increase:   target = {target}");
+    Resource::NOFILE.set(target, hard)?;
+
+    let (soft, hard) = Resource::NOFILE.get()?;
+    println!("After increasing:  soft   = {soft}, hard = {hard}");
+    Ok(soft)
+}
 
 #[tokio::main(worker_threads = 1)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let num_threads = 128;
+    let num_threads = num_cpus::get();
     let connections_per_thread = 4096 / num_threads;
+
+    match increase_nofile_limit() {
+        Ok(soft) => println!("NOFILE limit:      soft   = {soft}"),
+        Err(err) => println!("Failed to increase NOFILE limit: {err}"),
+    }
 
     let url = "http://127.0.0.1:8080/";
 

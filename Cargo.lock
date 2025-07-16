@@ -118,6 +118,8 @@ dependencies = [
  "http-body-util",
  "hyper",
  "hyper-util",
+ "num_cpus",
+ "rlimit",
  "thousands",
  "tokio",
  "tokio-metrics",
@@ -629,6 +631,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d04b7d0ee6b4a0207a0a7adb104d23ecb0b47d6beae7152d0fa34b692b29fd6"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "rlimit"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7043b63bd0cd1aaa628e476b80e6d4023a3b50eb32789f2728908107bd0c793a"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
