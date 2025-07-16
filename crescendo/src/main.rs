@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
+use thousands::Separable;
 use tokio::runtime::Runtime;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,7 +43,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let eps = errors - last_errors;
             println!(
                 "RPS: {}, EPS: {}, Total requests: {}, Total errors: {}",
-                rps, eps, requests, errors
+                rps.separate_with_commas(),
+                eps.separate_with_commas(),
+                requests.separate_with_commas(),
+                errors.separate_with_commas()
             );
             last_requests = requests;
             last_errors = errors;
@@ -90,7 +94,6 @@ struct Stats {
 async fn worker(url: &str, stats: Arc<Stats>) {
     // Create HTTP client with connection pooling
     let mut connector = HttpConnector::new();
-
     connector.set_nodelay(true);
     connector.set_keepalive(Some(Duration::from_secs(60)));
 
