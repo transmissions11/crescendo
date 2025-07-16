@@ -85,7 +85,7 @@ async fn worker(url: &str, stats: Arc<Stats>) {
 
     let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
         .pool_idle_timeout(Duration::from_secs(90))
-        .pool_max_idle_per_host(100)
+        .pool_max_idle_per_host(10)
         .build(connector);
 
     let req = Request::builder()
