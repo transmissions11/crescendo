@@ -12,29 +12,36 @@ use std::time::Duration;
 use std::{cmp, io};
 use thousands::Separable;
 
-const DEFAULT_NOFILE_LIMIT: u64 = u64::MAX;
+const TOTAL_CONNECTIONS: u64 = 4096;
 
 pub fn increase_nofile_limit() -> io::Result<u64> {
     let (soft, hard) = Resource::NOFILE.get()?;
-    println!("Before increasing: soft   = {soft}, hard = {hard}");
+    println!("Before increasing file descriptor limit: soft = {soft}, hard = {hard}");
 
-    let target = cmp::min(DEFAULT_NOFILE_LIMIT, hard);
-    println!("Try to increase:   target = {target}");
-    Resource::NOFILE.set(target, hard)?;
+    let safe_limit = TOTAL_CONNECTIONS * 10;
+    if hard < safe_limit {
+        panic!(
+            "File descriptor hard limit is too low. Please increase it to at least {}.",
+            safe_limit
+        );
+    }
+
+    Resource::NOFILE.set(safe_limit, hard)?;
 
     let (soft, hard) = Resource::NOFILE.get()?;
-    println!("After increasing:  soft   = {soft}, hard = {hard}");
+    println!("After increasing file descriptor limit:  soft = {soft}, hard = {hard}");
+
     Ok(soft)
 }
 
 #[tokio::main(worker_threads = 1)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let num_threads = num_cpus::get();
-    let connections_per_thread = 4096 / num_threads;
+    let num_threads = num_cpus::get() as u64;
+    let connections_per_thread = TOTAL_CONNECTIONS / num_threads;
 
     match increase_nofile_limit() {
-        Ok(soft) => println!("NOFILE limit:      soft   = {soft}"),
-        Err(err) => println!("Failed to increase NOFILE limit: {err}"),
+        Ok(soft) => println!("Increased file descriptor limit to {soft}."),
+        Err(err) => println!("Failed to increase file descriptor limit: {err}."),
     }
 
     let url = "http://127.0.0.1:8080/";
