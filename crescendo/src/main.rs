@@ -80,7 +80,8 @@ struct Stats {
 async fn worker(url: &str, stats: Arc<Stats>) {
     // Create HTTP client with connection pooling
     let mut connector = HttpConnector::new();
-    connector.set_nodelay(false);
+    connector.set_reuse_address(true);
+    connector.set_nodelay(true);
     connector.set_keepalive(Some(Duration::from_secs(60)));
 
     let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
