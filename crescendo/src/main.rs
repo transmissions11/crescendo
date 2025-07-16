@@ -61,18 +61,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .build()
                 .unwrap();
             rt.block_on(async {
-                let handle = tokio::runtime::Handle::current();
-                let runtime_monitor = tokio_metrics::RuntimeMonitor::new(&handle);
-
-                // print runtime metrics every 500ms
-                let frequency = std::time::Duration::from_millis(500);
-                tokio::spawn(async move {
-                    for metrics in runtime_monitor.intervals() {
-                        println!("Metrics = {:?}", metrics);
-                        tokio::time::sleep(frequency).await;
-                    }
-                });
-
                 let mut tasks = vec![];
                 for _ in 0..connections_per_thread {
                     let stats = Arc::clone(&stats);
