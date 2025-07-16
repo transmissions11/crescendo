@@ -723,6 +723,7 @@ name = "testserver"
 version = "0.1.0"
 dependencies = [
  "may_minihttp",
+ "thousands",
 ]
 
 [[package]]
