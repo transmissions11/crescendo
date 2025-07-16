@@ -12,7 +12,7 @@ use thousands::Separable;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let num_threads = 10;
+    let num_threads = 16;
     let connections_per_thread = 4096 / num_threads;
 
     let url = "http://127.0.0.1:8080/";
