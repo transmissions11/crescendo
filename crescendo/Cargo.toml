@@ -10,3 +10,4 @@ hyper-util = { version = "0.1", features = ["full"] }
 http = "1"
 http-body-util = "0.1"
 thousands = "0.2.0"
+tokio-metrics = "0.4.3"
