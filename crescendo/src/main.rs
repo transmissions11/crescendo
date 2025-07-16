@@ -16,7 +16,7 @@ const TOTAL_CONNECTIONS: u64 = 4096;
 
 pub fn increase_nofile_limit() -> io::Result<u64> {
     let (soft, hard) = Resource::NOFILE.get()?;
-    println!("Before increasing file descriptor limit: soft = {soft}, hard = {hard}");
+    println!("At startup, file descriptor limit:            soft = {soft}, hard = {hard}");
 
     let safe_limit = TOTAL_CONNECTIONS * 10;
     if hard < safe_limit {
@@ -26,10 +26,12 @@ pub fn increase_nofile_limit() -> io::Result<u64> {
         );
     }
 
-    Resource::NOFILE.set(safe_limit, hard)?;
+    if soft != hard {
+        Resource::NOFILE.set(hard, hard)?; // Just max things out to give us plenty of overhead.
 
-    let (soft, hard) = Resource::NOFILE.get()?;
-    println!("After increasing file descriptor limit:  soft = {soft}, hard = {hard}");
+        let (soft, hard) = Resource::NOFILE.get()?;
+        println!("After increasingm file descriptor limit:  soft = {soft}, hard = {hard}");
+    }
 
     Ok(soft)
 }
@@ -40,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let connections_per_thread = TOTAL_CONNECTIONS / num_threads;
 
     match increase_nofile_limit() {
-        Ok(soft) => println!("Increased file descriptor limit to {soft}."),
+        Ok(soft) => println!("File descriptor limit is set to {soft}."),
         Err(err) => println!("Failed to increase file descriptor limit: {err}."),
     }
 
