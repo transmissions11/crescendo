@@ -16,7 +16,7 @@ use tokio::runtime::Runtime;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let num_threads = 64;
-    let connections_per_thread = 4096 / num_threads;
+    let connections_per_thread = 2048 / num_threads;
 
     let url = "http://127.0.0.1:8080/";
 
