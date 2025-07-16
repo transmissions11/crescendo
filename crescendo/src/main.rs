@@ -92,7 +92,6 @@ async fn worker(url: &str, stats: Arc<Stats>) {
 
     let req = Request::builder()
         .uri(url)
-        .header("Host", "localhost")
         .body(Empty::<Bytes>::new())
         .unwrap();
 
