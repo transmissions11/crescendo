@@ -10,19 +10,23 @@ use std::sync::Arc;
 use std::time::Duration;
 use thousands::Separable;
 
-#[tokio::main(worker_threads = 2)]
+#[tokio::main(worker_threads = 1)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let num_threads = 128;
     let connections_per_thread = 4096 / num_threads;
+
     let url = "http://127.0.0.1:8080/";
+
     println!(
         "Running {} threads with {} connections each against {}",
         num_threads, connections_per_thread, url
     );
+
     let stats = Arc::new(Stats {
         requests: AtomicU64::new(0),
         errors: AtomicU64::new(0),
     });
+
     // Start monitoring task
     let stats_clone = Arc::clone(&stats);
     tokio::spawn(async move {
@@ -45,38 +49,64 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             last_errors = errors;
         }
     });
-    // Spawn all worker tasks
-    let mut tasks = vec![];
-    let total_connections = num_threads * connections_per_thread;
-    for _ in 0..total_connections {
+
+    // Spawn all worker threads
+    let mut handles = vec![];
+
+    for _ in 0..num_threads {
         let stats = Arc::clone(&stats);
-        let task = tokio::spawn(async move {
-            worker(url, stats).await;
+        let handle = std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(async {
+                let mut tasks = vec![];
+                for _ in 0..connections_per_thread {
+                    let stats = Arc::clone(&stats);
+                    let task = tokio::spawn(async move {
+                        worker(url, stats).await;
+                    });
+                    tasks.push(task);
+                }
+
+                // Wait for all tasks (this will run forever since workers loop infinitely)
+                for task in tasks {
+                    let _ = task.await;
+                }
+            });
         });
-        tasks.push(task);
+        handles.push(handle);
     }
-    // Wait for all tasks (this will run forever since workers loop infinitely)
-    for task in tasks {
-        let _ = task.await;
+
+    // Wait for all threads (this will run forever since workers loop infinitely)
+    for handle in handles {
+        let _ = handle.join();
     }
+
     Ok(())
 }
+
 struct Stats {
     requests: AtomicU64,
     errors: AtomicU64,
 }
+
 async fn worker(url: &str, stats: Arc<Stats>) {
     let mut connector = HttpConnector::new();
     connector.set_nodelay(true);
     connector.set_keepalive(Some(Duration::from_secs(60)));
+
     let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
         .pool_idle_timeout(Duration::from_secs(90))
         .pool_max_idle_per_host(100)
         .build(connector);
+
     let req = Request::builder()
         .uri(url)
         .body(Empty::<Bytes>::new())
         .unwrap();
+
     loop {
         match client.request(req.clone()).await {
             Ok(res) => {
