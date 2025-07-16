@@ -1,3 +1,4 @@
+// PROGRAM B
 use http::StatusCode;
 use http_body_util::{BodyExt, Empty, Full};
 use hyper::body::Bytes;
@@ -9,11 +10,12 @@ use hyper_util::rt::TokioExecutor;
 use std::hint::black_box;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
 use thousands::Separable;
+use tokio::runtime::Runtime;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let num_threads = 128;
     let connections_per_thread = 4096 / num_threads;
 
@@ -29,25 +31,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         errors: AtomicU64::new(0),
     });
 
-    let handle = tokio::runtime::Handle::current();
-    let runtime_monitor = tokio_metrics::RuntimeMonitor::new(&handle);
-
-    // print runtime metrics every 500ms
-    let frequency = std::time::Duration::from_millis(500);
-    tokio::spawn(async move {
-        for metrics in runtime_monitor.intervals() {
-            println!("Metrics = {:?}", metrics);
-            tokio::time::sleep(frequency).await;
-        }
-    });
-
     // Start monitoring task
+    // Start monitoring thread
     let stats_clone = Arc::clone(&stats);
-    tokio::spawn(async move {
+    thread::spawn(move || {
         let mut last_requests = 0u64;
         let mut last_errors = 0u64;
         loop {
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            thread::sleep(Duration::from_secs(1));
             let requests = stats_clone.requests.load(Ordering::Relaxed);
             let errors = stats_clone.errors.load(Ordering::Relaxed);
             let rps = requests - last_requests;
@@ -64,21 +55,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Spawn all worker tasks
-    let mut tasks = vec![];
-    let total_connections = num_threads * connections_per_thread;
-
-    for _ in 0..total_connections {
+    // Spawn worker threads
+    let mut handles = vec![];
+    for i in 0..num_threads {
         let stats = Arc::clone(&stats);
-        let task = tokio::spawn(async move {
-            worker(url, stats).await;
+        let handle = thread::spawn(move || {
+            // Create a runtime for this thread
+            let rt = Runtime::new().unwrap();
+
+            if i == 0 {
+                let runtime_monitor = tokio_metrics::RuntimeMonitor::new(&rt.handle());
+
+                // print runtime metrics every 500ms
+                let frequency = std::time::Duration::from_millis(500);
+                tokio::spawn(async move {
+                    for metrics in runtime_monitor.intervals() {
+                        println!("Metrics = {:?}", metrics);
+                        tokio::time::sleep(frequency).await;
+                    }
+                });
+            }
+
+            rt.block_on(async {
+                let mut tasks = vec![];
+                for _ in 0..connections_per_thread {
+                    let stats = Arc::clone(&stats);
+                    let task = tokio::spawn(async move {
+                        worker(url, stats).await;
+                    });
+                    tasks.push(task);
+                }
+                // Wait for all tasks
+                for task in tasks {
+                    let _ = task.await;
+                }
+            });
         });
-        tasks.push(task);
+        handles.push(handle);
     }
 
-    // Wait for all tasks (this will run forever since workers loop infinitely)
-    for task in tasks {
-        let _ = task.await;
+    // Wait for all threads
+    for handle in handles {
+        handle.join().unwrap();
     }
 
     Ok(())
