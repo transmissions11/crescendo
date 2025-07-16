@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use thousands::Separable;
 
-#[tokio::main]
+#[tokio::main(worker_threads = 1)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let num_threads = 128;
     let connections_per_thread = 4096 / num_threads;
@@ -50,33 +50,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let handle = tokio::runtime::Handle::current();
-    let runtime_monitor = tokio_metrics::RuntimeMonitor::new(&handle);
+    // Spawn all worker threads
+    let mut handles = vec![];
 
-    // print runtime metrics every 500ms
-    let frequency = std::time::Duration::from_millis(500);
-    tokio::spawn(async move {
-        for metrics in runtime_monitor.intervals() {
-            println!("Metrics = {:?}", metrics);
-            tokio::time::sleep(frequency).await;
-        }
-    });
-
-    // Spawn all worker tasks
-    let mut tasks = vec![];
-    let total_connections = num_threads * connections_per_thread;
-
-    for _ in 0..total_connections {
+    for _ in 0..num_threads {
         let stats = Arc::clone(&stats);
-        let task = tokio::spawn(async move {
-            worker(url, stats).await;
+        let handle = std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(async {
+                let handle = tokio::runtime::Handle::current();
+                let runtime_monitor = tokio_metrics::RuntimeMonitor::new(&handle);
+
+                // print runtime metrics every 500ms
+                let frequency = std::time::Duration::from_millis(500);
+                tokio::spawn(async move {
+                    for metrics in runtime_monitor.intervals() {
+                        println!("Metrics = {:?}", metrics);
+                        tokio::time::sleep(frequency).await;
+                    }
+                });
+
+                let mut tasks = vec![];
+                for _ in 0..connections_per_thread {
+                    let stats = Arc::clone(&stats);
+                    let task = tokio::spawn(async move {
+                        worker(url, stats).await;
+                    });
+                    tasks.push(task);
+                }
+
+                // Wait for all tasks (this will run forever since workers loop infinitely)
+                for task in tasks {
+                    let _ = task.await;
+                }
+            });
         });
-        tasks.push(task);
+        handles.push(handle);
     }
 
-    // Wait for all tasks (this will run forever since workers loop infinitely)
-    for task in tasks {
-        let _ = task.await;
+    // Wait for all threads (this will run forever since workers loop infinitely)
+    for handle in handles {
+        let _ = handle.join();
     }
 
     Ok(())
