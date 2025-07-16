@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use thousands::Separable;
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::main(flavor = "multi_thread", worker_threads = 12)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let num_threads = 128;
     let connections_per_thread = 4096 / num_threads;
