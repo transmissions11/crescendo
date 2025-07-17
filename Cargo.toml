@@ -1,0 +1,17 @@
+[workspace]
+members = [
+    "crescendo",
+    "testserver",
+]
+resolver = "2"
+
+[profile.release]
+debug = true
+
+[profile.maxperf]
+inherits = "release"
+debug = false
+strip = "symbols"
+panic = "abort"
+lto = "fat"
+codegen-units = 1

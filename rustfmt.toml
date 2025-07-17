@@ -1,0 +1,14 @@
+max_width = 120
+
+use_small_heuristics = "Max"
+
+use_field_init_shorthand = true
+format_macro_matchers = true
+format_macro_bodies = true
+format_code_in_doc_comments = true
+
+reorder_imports = true
+imports_granularity = "Module"
+group_imports = "StdExternalCrate"
+imports_layout = "Horizontal"
+imports_indent = "Visual"
