@@ -1,3 +1,3 @@
 # crescendo
 
-colossally high performance ethereum node tester
+colossally high throughput ethereum node tester
