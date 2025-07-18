@@ -36,11 +36,10 @@ async fn main() {
 
     // Spawn all worker threads.
     for _ in 0..(num_threads / 2) {
-        thread::spawn(move || tx_gen::worker::tx_gen_worker());
-
         thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
             rt.block_on(async {
+                tokio::spawn(tx_gen::worker::tx_gen_worker());
                 for _ in 0..connections_per_thread {
                     tokio::spawn(worker::connection_worker(TARGET_URL));
                 }
