@@ -23,8 +23,6 @@ const TARGET_URL: &str = "http://127.0.0.1:8080";
 
 #[tokio::main(worker_threads = 1)]
 async fn main() {
-    println!("Core IDs: {:?}", core_affinity::get_core_ids().unwrap());
-    println!("available_parallelism: {:?}", std::thread::available_parallelism().unwrap());
     let core_ids = core_affinity::get_core_ids().unwrap();
     let mut threads_available = core_ids.len() as u64;
     let connections_per_thread = TOTAL_CONNECTIONS / threads_available as u64;
@@ -39,10 +37,16 @@ async fn main() {
     );
 
     // TODO: Make this ratio configurable, and also maybe auto-tune/warn if its too low?
-    for _ in 0..(threads_available * 3 / 10) {
-        thread::spawn(move || tx_gen::worker::tx_gen_worker());
+    for i in 0..(threads_available * 3 / 10) {
+        let to_pin = core_ids[i as usize];
+        thread::spawn(move || {
+            core_affinity::set_for_current(to_pin);
+            tx_gen::worker::tx_gen_worker();
+        });
         threads_available -= 1;
     }
+
+    println!("Core IDs: {:?}", core_affinity::get_core_ids().unwrap());
 
     for _ in 0..threads_available {
         thread::spawn(move || {
