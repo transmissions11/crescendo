@@ -1,10 +1,12 @@
 use std::sync::Mutex;
 
+use crossbeam_utils::CachePadded;
+
 pub struct PayloadQueue {
     queue: Mutex<Vec<Vec<u8>>>,
 }
 
-pub static PAYLOAD_QUEUE: PayloadQueue = PayloadQueue { queue: Mutex::new(Vec::new()) };
+pub static PAYLOAD_QUEUE: CachePadded<PayloadQueue> = CachePadded::new(PayloadQueue { queue: Mutex::new(Vec::new()) });
 
 impl PayloadQueue {
     pub fn push_payload(&self, payload: Vec<u8>) {
