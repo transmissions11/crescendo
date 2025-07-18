@@ -36,28 +36,28 @@ async fn main() {
         threads_available, connections_per_thread, TARGET_URL
     );
 
-    // TODO: Make this ratio configurable, and also maybe auto-tune/warn if its too low?
-    for i in 0..(threads_available * 3 / 10) {
-        let to_pin = core_ids[i as usize];
-        thread::spawn(move || {
-            core_affinity::set_for_current(to_pin);
-            tx_gen::worker::tx_gen_worker();
-        });
-        threads_available -= 1;
-    }
-
-    println!("how many left: {:?}", core_affinity::get_core_ids().unwrap().len());
-
-    for _ in 0..threads_available {
-        thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
-            rt.block_on(async {
-                for _ in 0..connections_per_thread {
-                    tokio::spawn(worker::connection_worker(TARGET_URL));
-                }
-                pending::<()>().await; // Keep the runtime alive forever.
+    let mut spawned_threads: u64 = 0;
+    for core_id in core_ids {
+        if spawned_threads < threads_available * 3 / 10 {
+            println!("Spawning tx gen worker on core {}", core_id.id);
+            thread::spawn(move || {
+                core_affinity::set_for_current(core_id);
+                tx_gen::worker::tx_gen_worker();
             });
-        });
+        } else {
+            println!("Spawning connection worker on core {}", core_id.id);
+            thread::spawn(move || {
+                core_affinity::set_for_current(core_id);
+                let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+                rt.block_on(async {
+                    for _ in 0..connections_per_thread {
+                        tokio::spawn(worker::connection_worker(TARGET_URL));
+                    }
+                    pending::<()>().await; // Keep the runtime alive forever.
+                });
+            });
+        }
+        spawned_threads += 1;
     }
 
     // Start reporters.
