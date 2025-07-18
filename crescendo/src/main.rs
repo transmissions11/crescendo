@@ -43,7 +43,6 @@ async fn main() {
     let connections_per_network_worker = TOTAL_CONNECTIONS / worker_counts[&WorkerType::Network];
     println!("Connections per network worker: {}", connections_per_network_worker);
 
-        } else {
     // Spawn the workers, pinning them to the appropriate cores if enabled.
     for (core_id, worker_type) in workers {
         match worker_type {
