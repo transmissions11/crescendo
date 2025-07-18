@@ -21,7 +21,7 @@ pub fn increase_nofile_limit(min_limit: u64) -> io::Result<u64> {
 }
 
 pub fn pin_thread(core_id: CoreId) {
-    // if !core_affinity::set_for_current(core_id) {
-    //     panic!("Failed to pin thread to core {}.", core_id.id);
-    // }
+    if !core_affinity::set_for_current(core_id) {
+        panic!("Failed to pin thread to core {}.", core_id.id);
+    }
 }
