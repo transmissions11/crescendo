@@ -18,6 +18,7 @@ impl TxQueue {
     pub fn queue_len(&self) -> usize {
         self.queue.lock().map(|q| q.len()).unwrap_or(0)
     }
+
     pub async fn start_reporter(&self, measurement_interval: std::time::Duration) {
         let mut last_queue_len = 0usize;
         let mut interval = tokio::time::interval(measurement_interval);

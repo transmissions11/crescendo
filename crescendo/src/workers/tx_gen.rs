@@ -40,7 +40,6 @@ pub fn generate_and_sign_tx(
 }
 
 pub fn sign_and_encode_tx(signer: &PrivateKeySigner, mut tx: TxLegacy) -> Vec<u8> {
-    // try async
     let signature = signer.sign_transaction_sync(&mut tx).unwrap();
     let mut payload = Vec::new();
     tx.into_signed(signature).eip2718_encode(&mut payload);

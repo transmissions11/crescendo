@@ -14,6 +14,9 @@ pub enum WorkerType {
     Network,
 }
 
+///
+/// Assumes that thread pinning is desired and thus maps each worker to a core, but this can be
+/// ignored if desired, of course. Each worker type will be assigned at least one core.
 pub fn assign_workers(
     mut core_ids: Vec<CoreId>,
     assignments: Vec<(WorkerType, f64)>,
