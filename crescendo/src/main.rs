@@ -21,7 +21,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 const TOTAL_CONNECTIONS: u64 = 4096;
 const TARGET_URL: &str = "http://127.0.0.1:8080";
 
-#[tokio::main(worker_threads = 1)]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let core_ids = core_affinity::get_core_ids().unwrap();
     let mut threads_available = core_ids.len() as u64;
@@ -42,12 +42,13 @@ async fn main() {
             println!("Spawning tx gen worker on core {}", core_id.id);
             thread::spawn(move || {
                 // core_affinity::set_for_current(core_id);
+                core_affinity::set_for_current(core_id);
                 tx_gen::worker::tx_gen_worker();
             });
         } else {
             println!("Spawning connection worker on core {}", core_id.id);
             thread::spawn(move || {
-                // core_affinity::set_for_current(core_id);
+                core_affinity::set_for_current(core_id);
                 let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
                 rt.block_on(async {
                     for _ in 0..connections_per_thread {
