@@ -1,40 +1,17 @@
-use std::hint::black_box;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
-
 use alloy::primitives::{Address, Bytes};
 use alloy::signers::local::PrivateKeySigner;
 
+use crate::tx_gen::queue::PAYLOAD_QUEUE;
 use crate::tx_gen::utils::generate_and_sign_tx;
 
-pub fn tx_gen_worker(thread_id: u64) {
-    let tx_counter = Arc::new(AtomicU64::new(0));
-
-    {
-        let tx_counter = tx_counter.clone();
-        thread::spawn(move || {
-            let mut last_nonce = 0;
-            thread::sleep(Duration::from_secs(1));
-            loop {
-                thread::sleep(Duration::from_secs(1));
-                let current_nonce = tx_counter.load(Ordering::Relaxed);
-                let tps = current_nonce - last_nonce;
-                println!("Thread {} TXs per second: {}", thread_id, tps);
-                last_nonce = current_nonce;
-            }
-        });
-    }
-
+pub fn tx_gen_worker() {
     let mut nonce = 0u64;
 
     let signer = PrivateKeySigner::random();
 
     loop {
         let tx = generate_and_sign_tx(&signer, 1, nonce, 10_000_000_000, 100_000, Address::from([0; 20]), Bytes::new());
-        black_box(tx);
+        PAYLOAD_QUEUE.push_payload(tx);
         nonce += 1;
-        tx_counter.fetch_add(1, Ordering::Relaxed);
     }
 }

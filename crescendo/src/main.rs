@@ -5,6 +5,8 @@ use std::time::Duration;
 use mimalloc::MiMalloc;
 use stats::STATS;
 
+use crate::tx_gen::queue::PAYLOAD_QUEUE;
+
 mod stats;
 mod tx_gen;
 mod utils;
@@ -32,10 +34,10 @@ async fn main() {
         num_threads, connections_per_thread, TARGET_URL
     );
 
-    // Spawn all worker threads.
-    for i in 0..(num_threads / 2) {
-        thread::spawn(move || tx_gen::worker::tx_gen_worker(i));
+    thread::spawn(move || tx_gen::worker::tx_gen_worker());
 
+    // Spawn all worker threads.
+    for _ in 0..(num_threads / 2) {
         thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
             rt.block_on(async {
@@ -47,7 +49,8 @@ async fn main() {
         });
     }
 
-    // Start stats reporter.
+    // Start reporters.
+    tokio::spawn(PAYLOAD_QUEUE.start_reporter(Duration::from_secs(1)));
     tokio::spawn(STATS.start_reporter(Duration::from_secs(1)))
         .await // Keep the main thread alive forever.
         .unwrap();
