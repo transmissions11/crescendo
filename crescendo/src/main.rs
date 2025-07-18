@@ -38,15 +38,15 @@ async fn main() {
     for _ in 0..(num_threads / 2) {
         thread::spawn(move || tx_gen::worker::tx_gen_worker());
 
-        thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
-            rt.block_on(async {
-                for _ in 0..connections_per_thread {
-                    tokio::spawn(worker::connection_worker(TARGET_URL));
-                }
-                pending::<()>().await; // Keep the runtime alive forever.
-            });
-        });
+        // thread::spawn(move || {
+        //     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        //     rt.block_on(async {
+        //         for _ in 0..connections_per_thread {
+        //             tokio::spawn(worker::connection_worker(TARGET_URL));
+        //         }
+        //         pending::<()>().await; // Keep the runtime alive forever.
+        //     });
+        // });
     }
 
     // Start reporters.
