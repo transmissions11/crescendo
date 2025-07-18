@@ -18,4 +18,4 @@ mimalloc = "0.1.47"
 alloy = { version = "1", features = ["genesis"] }
 alloy-evm = "0.13"
 alloy-consensus = { version = "1", features = ["secp256k1"] }
-core-affinity = "0.5.1"
+core_affinity = "0.8.3"
