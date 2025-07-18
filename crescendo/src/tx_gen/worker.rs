@@ -1,6 +1,7 @@
 use std::hint::black_box;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::thread;
 use std::time::Duration;
 
 use alloy::primitives::{Address, Bytes};
@@ -13,12 +14,11 @@ pub fn tx_gen_worker(thread_id: u64) {
 
     {
         let tx_counter = tx_counter.clone();
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(1));
+        thread::spawn(move || {
             let mut last_nonce = 0;
-            interval.tick().await;
+            thread::sleep(Duration::from_secs(1));
             loop {
-                interval.tick().await;
+                thread::sleep(Duration::from_secs(1));
                 let current_nonce = tx_counter.load(Ordering::Relaxed);
                 let tps = current_nonce - last_nonce;
                 println!("Thread {} TXs per second: {}", thread_id, tps);
