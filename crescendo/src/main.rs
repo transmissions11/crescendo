@@ -36,7 +36,7 @@ async fn main() {
         total_cores, connections_per_thread, TARGET_URL
     );
 
-    utils::pin_thread(core_ids.pop().unwrap()); // Pin the tokio runtime to a core.
+    // utils::pin_thread(core_ids.pop().unwrap()); // Pin the tokio runtime to a core.
 
     while let Some(core_id) = core_ids.pop() {
         // let cores_left = core_ids.len() as u64;
@@ -49,7 +49,7 @@ async fn main() {
         // } else {
         println!("Spawning connection worker on core {}", core_id.id);
         thread::spawn(move || {
-            utils::pin_thread(core_id);
+            // utils::pin_thread(core_id);
             let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
             rt.block_on(async {
                 for _ in 0..connections_per_thread {
