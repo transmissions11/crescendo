@@ -23,33 +23,32 @@ const TARGET_URL: &str = "http://127.0.0.1:8080";
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let mut core_ids = core_affinity::get_core_ids().unwrap();
-    let mut threads_available = core_ids.len() as u64;
-    let connections_per_thread = TOTAL_CONNECTIONS / threads_available as u64;
-
     if let Err(err) = utils::increase_nofile_limit(TOTAL_CONNECTIONS * 10) {
         println!("Failed to increase file descriptor limit: {err}.");
     }
 
+    let mut core_ids = core_affinity::get_core_ids().unwrap();
+    let mut total_cores = core_ids.len() as u64;
+
+    let connections_per_thread = TOTAL_CONNECTIONS / total_cores as u64;
     println!(
         "Running {} threads with {} connections each against {}...",
-        threads_available, connections_per_thread, TARGET_URL
+        total_cores, connections_per_thread, TARGET_URL
     );
 
-    core_ids.pop().unwrap(); // Skip the first core for the main tokio runtime.
+    utils::pin_thread(core_ids.pop().unwrap()); // Pin the tokio runtime to a core.
 
-    let mut spawned_threads: u64 = 0;
-    for core_id in core_ids {
-        if spawned_threads < threads_available * 3 / 10 {
+    while let Some(core_id) = core_ids.pop() {
+        if (core_ids.len() as u64) < total_cores * 3 / 10 {
             println!("Spawning tx gen worker on core {}", core_id.id);
             thread::spawn(move || {
-                // core_affinity::set_for_current(core_id);
+                utils::pin_thread(core_id);
                 tx_gen::worker::tx_gen_worker();
             });
         } else {
             println!("Spawning connection worker on core {}", core_id.id);
             thread::spawn(move || {
-                // core_affinity::set_for_current(core_id);
+                utils::pin_thread(core_id);
                 let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
                 rt.block_on(async {
                     for _ in 0..connections_per_thread {
@@ -59,7 +58,6 @@ async fn main() {
                 });
             });
         }
-        spawned_threads += 1;
     }
 
     // Start reporters.

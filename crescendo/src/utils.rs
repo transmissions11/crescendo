@@ -1,5 +1,6 @@
 use std::io;
 
+use core_affinity::CoreId;
 use rlimit::Resource;
 
 pub fn increase_nofile_limit(min_limit: u64) -> io::Result<u64> {
@@ -17,4 +18,10 @@ pub fn increase_nofile_limit(min_limit: u64) -> io::Result<u64> {
     }
 
     Ok(soft)
+}
+
+pub fn pin_thread(core_id: CoreId) {
+    if !core_affinity::set_for_current(core_id) {
+        panic!("Failed to pin thread to core {}.", core_id.id);
+    }
 }
