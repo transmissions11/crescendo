@@ -41,13 +41,13 @@ async fn main() {
         if spawned_threads < threads_available * 3 / 10 {
             println!("Spawning tx gen worker on core {}", core_id.id);
             thread::spawn(move || {
-                core_affinity::set_for_current(core_id);
+                // core_affinity::set_for_current(core_id);
                 tx_gen::worker::tx_gen_worker();
             });
         } else {
             println!("Spawning connection worker on core {}", core_id.id);
             thread::spawn(move || {
-                core_affinity::set_for_current(core_id);
+                // core_affinity::set_for_current(core_id);
                 let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
                 rt.block_on(async {
                     for _ in 0..connections_per_thread {
