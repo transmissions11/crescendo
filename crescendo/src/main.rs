@@ -26,7 +26,8 @@ async fn main() {
     println!("Core IDs: {:?}", core_affinity::get_core_ids().unwrap());
     println!("available_parallelism: {:?}", std::thread::available_parallelism().unwrap());
     let core_ids = core_affinity::get_core_ids().unwrap();
-    let connections_per_thread = TOTAL_CONNECTIONS / core_ids.len() as u64;
+    let threads_available = core_ids.len() as u64;
+    let connections_per_thread = TOTAL_CONNECTIONS / threads_available as u64;
 
     if let Err(err) = utils::increase_nofile_limit(TOTAL_CONNECTIONS * 10) {
         println!("Failed to increase file descriptor limit: {err}.");
