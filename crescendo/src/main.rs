@@ -46,7 +46,7 @@ async fn main() {
         threads_available -= 1;
     }
 
-    println!("Core IDs: {:?}", core_affinity::get_core_ids().unwrap());
+    println!("how many left: {:?}", core_affinity::get_core_ids().unwrap().len());
 
     for _ in 0..threads_available {
         thread::spawn(move || {
