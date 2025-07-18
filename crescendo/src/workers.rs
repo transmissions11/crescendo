@@ -14,6 +14,7 @@ pub enum WorkerType {
     Network,
 }
 
+/// Given a desired breakdown of workers, translate this into actual numbers of workers to spawn.
 ///
 /// Assumes that thread pinning is desired and thus maps each worker to a core, but this can be
 /// ignored if desired, of course. Each worker type will be assigned at least one core.
