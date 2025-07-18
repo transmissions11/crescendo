@@ -35,7 +35,7 @@ async fn main() {
     );
 
     // Spawn all worker threads.
-    for _ in 0..(num_threads / 2) {
+    for _ in 0..(num_threads) {
         thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build().unwrap();
             rt.block_on(async {
