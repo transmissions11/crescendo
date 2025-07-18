@@ -23,12 +23,26 @@ pub fn assign_workers(
 
     let total_starting_cores = core_ids.len();
 
+    // First pass: assign at least one core to each worker type
     let mut remaining_cores = total_starting_cores;
+    for (worker_type, _) in &assignments {
+        if remaining_cores > 0 {
+            if let Some(core_id) = core_ids.pop() {
+                result.push((core_id, *worker_type));
+                *worker_counts.entry(*worker_type).or_insert(0) += 1;
+                remaining_cores -= 1;
+            }
+        }
+    }
+
+    // Second pass: distribute remaining cores based on percentages
     for (worker_type, percentage) in assignments {
         let theoritical_cores_for_type = (total_starting_cores as f64 * percentage).ceil() as usize;
-        let actual_cores_for_type = theoritical_cores_for_type.min(remaining_cores).max(1);
+        // Subtract the 1 core we already assigned
+        let additional_cores_needed = theoritical_cores_for_type.saturating_sub(1);
+        let actual_additional_cores = additional_cores_needed.min(remaining_cores);
 
-        for _ in 0..actual_cores_for_type {
+        for _ in 0..actual_additional_cores {
             if let Some(core_id) = core_ids.pop() {
                 result.push((core_id, worker_type));
                 *worker_counts.entry(worker_type).or_insert(0) += 1;
