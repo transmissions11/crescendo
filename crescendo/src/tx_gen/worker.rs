@@ -7,7 +7,7 @@ use alloy::primitives::{Address, Bytes};
 
 use crate::tx_gen::utils::generate_and_sign_tx;
 
-pub fn tx_gen_worker(thread_id: usize) {
+pub fn tx_gen_worker(thread_id: u64) {
     let tx_counter = Arc::new(AtomicU64::new(0));
 
     {
