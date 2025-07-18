@@ -1,7 +1,21 @@
-use alloy::network::{TxSigner, TxSignerSync};
+use alloy::network::TxSignerSync;
 use alloy::primitives::{Address, Bytes, TxKind, U256};
 use alloy::signers::local::PrivateKeySigner;
 use alloy_consensus::{SignableTransaction, TxLegacy};
+
+use crate::tx_queue::TX_QUEUE;
+
+pub fn tx_gen_worker() {
+    let mut nonce = 0u64;
+
+    let signer = PrivateKeySigner::random();
+
+    loop {
+        let tx = generate_and_sign_tx(&signer, 1, nonce, 10_000_000_000, 100_000, Address::from([0; 20]), Bytes::new());
+        TX_QUEUE.push_tx(tx);
+        nonce += 1;
+    }
+}
 
 pub fn generate_and_sign_tx(
     signer: &PrivateKeySigner,

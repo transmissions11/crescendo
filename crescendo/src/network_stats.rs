@@ -4,7 +4,7 @@ use std::time::Duration;
 use crossbeam_utils::CachePadded;
 use thousands::Separable;
 
-pub struct Stats {
+pub struct NetworkStats {
     requests: AtomicU64,
     errors: AtomicU64,
 }
@@ -13,10 +13,10 @@ pub struct Stats {
 // other frequently accessed memory can occur. To mitigate, we pad stats
 // to the length of a full cache line to avoid conflict. This is measured
 // to increase RPS by >10% in the release profile at the time of writing.
-pub static STATS: CachePadded<Stats> =
-    CachePadded::new(Stats { requests: AtomicU64::new(0), errors: AtomicU64::new(0) });
+pub static NETWORK_STATS: CachePadded<NetworkStats> =
+    CachePadded::new(NetworkStats { requests: AtomicU64::new(0), errors: AtomicU64::new(0) });
 
-impl Stats {
+impl NetworkStats {
     pub fn inc_requests(&self) {
         self.requests.fetch_add(1, Ordering::Relaxed);
     }

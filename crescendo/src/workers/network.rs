@@ -1,14 +1,17 @@
 use std::time::Duration;
 
+use alloy::network::{TxSigner, TxSignerSync};
+use alloy::primitives::{Address, Bytes, TxKind, U256};
+use alloy::signers::local::PrivateKeySigner;
+use alloy_consensus::{SignableTransaction, TxLegacy};
 use http::StatusCode;
 use http_body_util::Empty;
-use hyper::body::Bytes;
 use hyper::Request;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
 
-use crate::stats::STATS;
+use crate::network_stats::NETWORK_STATS;
 
 pub async fn network_worker(url: &str) {
     let mut connector = HttpConnector::new();
@@ -26,15 +29,15 @@ pub async fn network_worker(url: &str) {
         match client.request(req.clone()).await {
             Ok(res) => {
                 if res.status() == StatusCode::OK {
-                    STATS.inc_requests();
+                    NETWORK_STATS.inc_requests();
                 } else {
                     println!("[!] Request did not have OK status: {:?}", res);
-                    STATS.inc_errors();
+                    NETWORK_STATS.inc_errors();
                 }
             }
             Err(e) => {
                 eprintln!("[!] Request failed: {}", e);
-                STATS.inc_errors();
+                NETWORK_STATS.inc_errors();
                 tokio::time::sleep(Duration::from_millis(10)).await; // Small backoff on error.
             }
         }

@@ -2,6 +2,12 @@ use std::collections::HashMap;
 
 use core_affinity::CoreId;
 
+mod network;
+mod tx_gen;
+
+pub use network::network_worker;
+pub use tx_gen::tx_gen_worker;
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum WorkerType {
     TxGen,

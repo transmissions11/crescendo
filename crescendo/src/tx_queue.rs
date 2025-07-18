@@ -2,16 +2,16 @@ use std::sync::Mutex;
 
 use thousands::Separable;
 
-pub struct PayloadQueue {
+pub struct TxQueue {
     queue: Mutex<Vec<Vec<u8>>>,
 }
 
-pub static PAYLOAD_QUEUE: PayloadQueue = PayloadQueue { queue: Mutex::new(Vec::new()) };
+pub static TX_QUEUE: TxQueue = TxQueue { queue: Mutex::new(Vec::new()) };
 
-impl PayloadQueue {
-    pub fn push_payload(&self, payload: Vec<u8>) {
+impl TxQueue {
+    pub fn push_tx(&self, tx: Vec<u8>) {
         if let Ok(mut queue) = self.queue.lock() {
-            queue.push(payload);
+            queue.push(tx);
         }
     }
 
@@ -27,7 +27,7 @@ impl PayloadQueue {
             let current_queue_len = self.queue_len();
             let queue_growth = current_queue_len.saturating_sub(last_queue_len);
             println!(
-                "[*] QGPS: {}, Total queue length: {}",
+                "[*] TxQueue Δ/s: {}, Total length: {}",
                 queue_growth.separate_with_commas(),
                 current_queue_len.separate_with_commas()
             );
