@@ -28,12 +28,12 @@ pub async fn network_worker(url: &str) {
                 if res.status() == StatusCode::OK {
                     STATS.inc_requests();
                 } else {
-                    println!("Request did not have OK status: {:?}", res);
+                    println!("[!] Request did not have OK status: {:?}", res);
                     STATS.inc_errors();
                 }
             }
             Err(e) => {
-                eprintln!("Request failed: {}", e);
+                eprintln!("[!] Request failed: {}", e);
                 STATS.inc_errors();
                 tokio::time::sleep(Duration::from_millis(10)).await; // Small backoff on error.
             }

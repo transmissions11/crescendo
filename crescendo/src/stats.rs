@@ -37,7 +37,7 @@ impl Stats {
             let rps = requests - last_requests;
             let eps = errors - last_errors;
             println!(
-                "RPS: {}, EPS: {}, Total requests: {}, Total errors: {}",
+                "[*] RPS: {}, EPS: {}, Total requests: {}, Total errors: {}",
                 rps.separate_with_commas(),
                 eps.separate_with_commas(),
                 requests.separate_with_commas(),

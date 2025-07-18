@@ -31,7 +31,7 @@ pub fn assign_workers(
         }
     }
 
-    println!("Spawning {} workers:", total_starting_cores);
+    println!("[+] Spawning {} workers:", total_starting_cores);
     for (worker_type, count) in worker_counts.clone() {
         println!("- {:?}: {}", worker_type, count);
     }

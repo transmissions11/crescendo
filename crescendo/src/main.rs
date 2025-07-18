@@ -21,6 +21,7 @@ mod workers;
 // writing. ~3.3% faster than jemalloc.
 static GLOBAL: MiMalloc = MiMalloc;
 
+// TODO: Configurable CLI args.
 const TOTAL_CONNECTIONS: u64 = 4096;
 const THREAD_PINNING: bool = true;
 const TARGET_URL: &str = "http://127.0.0.1:8080";
@@ -28,11 +29,11 @@ const TARGET_URL: &str = "http://127.0.0.1:8080";
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     if let Err(err) = utils::increase_nofile_limit(TOTAL_CONNECTIONS * 10) {
-        println!("Failed to increase file descriptor limit: {err}.");
+        println!("[!] Failed to increase file descriptor limit: {err}.");
     }
 
     let mut core_ids = core_affinity::get_core_ids().unwrap();
-    println!("Detected {} effective cores.", core_ids.len());
+    println!("[*] Detected {} effective cores.", core_ids.len());
 
     // Pin the tokio runtime to a core (if enabled).
     utils::maybe_pin_thread(core_ids.pop().unwrap(), THREAD_PINNING);
@@ -42,7 +43,7 @@ async fn main() {
         assign_workers(core_ids, vec![(WorkerType::Network, 0.75), (WorkerType::TxGen, 0.25)]);
 
     let connections_per_network_worker = TOTAL_CONNECTIONS / worker_counts[&WorkerType::Network];
-    println!("Connections per network worker: {}", connections_per_network_worker);
+    println!("[*]Connections per network worker: {}", connections_per_network_worker);
 
     // Spawn the workers, pinning them to the appropriate cores if enabled.
     for (core_id, worker_type) in workers {

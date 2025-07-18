@@ -24,7 +24,7 @@ impl PayloadQueue {
             interval.tick().await;
             let current_queue_len = self.queue_len();
             let queue_growth = current_queue_len.saturating_sub(last_queue_len);
-            println!("Queue growth per second: {}, Current queue length: {}", queue_growth, current_queue_len);
+            println!("[*] Queue growth per second: {}, Current queue length: {}", queue_growth, current_queue_len);
             last_queue_len = current_queue_len;
         }
     }
