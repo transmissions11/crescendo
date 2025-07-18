@@ -19,7 +19,7 @@ const TARGET_URL: &str = "http://127.0.0.1:8080";
 
 #[tokio::main(worker_threads = 1)]
 async fn main() {
-    let num_threads = num_cpus::get() as u64 / 2;
+    let num_threads = num_cpus::get() as u64;
     let connections_per_thread = TOTAL_CONNECTIONS / num_threads;
 
     if let Err(err) = utils::increase_nofile_limit(TOTAL_CONNECTIONS * 10) {
