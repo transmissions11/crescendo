@@ -1,9 +1,6 @@
 use std::time::Duration;
 
-use alloy::network::{TxSigner, TxSignerSync};
-use alloy::primitives::{Address, Bytes, TxKind, U256};
-use alloy::signers::local::PrivateKeySigner;
-use alloy_consensus::{SignableTransaction, TxLegacy};
+use alloy::primitives::Bytes;
 use http::StatusCode;
 use http_body_util::Empty;
 use hyper::Request;
