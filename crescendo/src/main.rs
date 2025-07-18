@@ -34,7 +34,7 @@ async fn main() {
         threads_available, connections_per_thread, TARGET_URL
     );
 
-    for _ in 0..(threads_available * 1 / 5) {
+    for _ in 0..(threads_available * 3 / 10) {
         thread::spawn(move || tx_gen::worker::tx_gen_worker());
         threads_available -= 1;
     }
