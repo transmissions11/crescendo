@@ -1,5 +1,7 @@
 use std::sync::Mutex;
 
+use thousands::Separable;
+
 pub struct PayloadQueue {
     queue: Mutex<Vec<Vec<u8>>>,
 }
@@ -24,7 +26,11 @@ impl PayloadQueue {
             interval.tick().await;
             let current_queue_len = self.queue_len();
             let queue_growth = current_queue_len.saturating_sub(last_queue_len);
-            println!("[*] QGPS: {}, Total queue length: {}", queue_growth, current_queue_len);
+            println!(
+                "[*] QGPS: {}, Total queue length: {}",
+                queue_growth.separate_with_commas(),
+                current_queue_len.separate_with_commas()
+            );
             last_queue_len = current_queue_len;
         }
     }
