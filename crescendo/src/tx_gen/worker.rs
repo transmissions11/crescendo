@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use alloy::primitives::{Address, Bytes};
+use alloy::signers::local::PrivateKeySigner;
 
 use crate::tx_gen::utils::generate_and_sign_tx;
 
@@ -28,8 +29,10 @@ pub fn tx_gen_worker(thread_id: u64) {
 
     let mut nonce = 0u64;
 
+    let signer = PrivateKeySigner::random();
+
     loop {
-        let tx = generate_and_sign_tx(1, nonce, 10_000_000_000, 100_000, Address::from([0; 20]), Bytes::new());
+        let tx = generate_and_sign_tx(&signer, 1, nonce, 10_000_000_000, 100_000, Address::from([0; 20]), Bytes::new());
         black_box(tx);
         nonce += 1;
         tx_counter.fetch_add(1, Ordering::Relaxed);
