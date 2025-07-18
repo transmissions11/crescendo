@@ -20,12 +20,12 @@ pub fn increase_nofile_limit(min_limit: u64) -> io::Result<u64> {
     Ok(soft)
 }
 
-const ENABLE_THREAD_PINNING: bool = false;
+pub fn maybe_pin_thread(core_id: CoreId, enable_thread_pinning: bool) {
+    if !enable_thread_pinning {
+        return;
+    }
 
-pub fn pin_thread(core_id: CoreId) {
-    if ENABLE_THREAD_PINNING {
-        if !core_affinity::set_for_current(core_id) {
-            panic!("Failed to pin thread to core {}.", core_id.id);
-        }
+    if !core_affinity::set_for_current(core_id) {
+        panic!("Failed to pin thread to core {}.", core_id.id);
     }
 }

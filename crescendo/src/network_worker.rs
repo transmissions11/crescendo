@@ -10,7 +10,7 @@ use hyper_util::rt::TokioExecutor;
 
 use crate::stats::STATS;
 
-pub async fn connection_worker(url: &str) {
+pub async fn network_worker(url: &str) {
     let mut connector = HttpConnector::new();
     connector.set_nodelay(true);
     connector.set_keepalive(Some(Duration::from_secs(60)));
