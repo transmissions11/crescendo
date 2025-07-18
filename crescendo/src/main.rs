@@ -36,6 +36,8 @@ async fn main() {
         threads_available, connections_per_thread, TARGET_URL
     );
 
+    core_ids.pop().unwrap(); // Skip the first core for the main tokio runtime.
+
     let mut spawned_threads: u64 = 0;
     for core_id in core_ids {
         if spawned_threads < threads_available * 3 / 10 {
