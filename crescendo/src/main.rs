@@ -2,6 +2,7 @@ use std::future::pending;
 use std::thread;
 use std::time::Duration;
 
+use core_affinity;
 use mimalloc::MiMalloc;
 use stats::STATS;
 
@@ -22,8 +23,10 @@ const TARGET_URL: &str = "http://127.0.0.1:8080";
 
 #[tokio::main(worker_threads = 1)]
 async fn main() {
-    let mut threads_available = num_cpus::get() as u64;
-    let connections_per_thread = TOTAL_CONNECTIONS / threads_available;
+    println!("Core IDs: {:?}", core_affinity::get_core_ids().unwrap());
+    println!("available_parallelism: {:?}", std::thread::available_parallelism().unwrap());
+    let core_ids = core_affinity::get_core_ids().unwrap();
+    let connections_per_thread = TOTAL_CONNECTIONS / core_ids.len() as u64;
 
     if let Err(err) = utils::increase_nofile_limit(TOTAL_CONNECTIONS * 10) {
         println!("Failed to increase file descriptor limit: {err}.");
@@ -34,6 +37,7 @@ async fn main() {
         threads_available, connections_per_thread, TARGET_URL
     );
 
+    // TODO: Make this ratio configurable, and also maybe auto-tune/warn if its too low?
     for _ in 0..(threads_available * 3 / 10) {
         thread::spawn(move || tx_gen::worker::tx_gen_worker());
         threads_available -= 1;
