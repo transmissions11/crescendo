@@ -36,6 +36,8 @@ async fn main() {
         total_cores, connections_per_thread, TARGET_URL
     );
 
+    core_ids.reverse(); // So we're popping id 0 first.
+
     utils::pin_thread(core_ids.pop().unwrap()); // Pin the tokio runtime to a core.
 
     while let Some(core_id) = core_ids.pop() {
