@@ -6,6 +6,7 @@ use mimalloc::MiMalloc;
 use stats::STATS;
 
 mod stats;
+mod tx_gen;
 mod utils;
 mod worker;
 
@@ -19,7 +20,7 @@ const TARGET_URL: &str = "http://127.0.0.1:8080";
 
 #[tokio::main(worker_threads = 1)]
 async fn main() {
-    let num_threads = num_cpus::get() as u64 / 2;
+    let num_threads = num_cpus::get() as u64;
     let connections_per_thread = TOTAL_CONNECTIONS / num_threads;
 
     if let Err(err) = utils::increase_nofile_limit(TOTAL_CONNECTIONS * 10) {
@@ -32,7 +33,9 @@ async fn main() {
     );
 
     // Spawn all worker threads.
-    for _ in 0..num_threads {
+    for i in 0..(num_threads / 2) {
+        thread::spawn(move || tx_gen::worker::tx_gen_worker(i));
+
         thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
             rt.block_on(async {
