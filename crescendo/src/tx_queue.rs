@@ -24,6 +24,10 @@ impl TxQueue {
 
     pub fn pop_tx(&self) -> Option<Vec<u8>> {
         if let Ok(mut queue) = self.queue.lock() {
+            // It's important to pop from the front here, otherwise the node
+            // gets confused seeing a bunch of txs with incredibly high nonces
+            // before it sees any of the lower ones. It's possible this issue
+            // could still emerge at high enough RPS, but haven't seen it yet.
             queue.pop_front()
         } else {
             None
