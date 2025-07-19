@@ -42,6 +42,8 @@ async fn handler(body: Json<JsonRpcRequest>) -> Result<HttpResponse> {
         return Ok(HttpResponse::BadRequest().body("Transaction hash must start with 0x"));
     }
 
+    tokio::time::sleep(Duration::from_millis(500)).await; // Simulate processing time.
+
     TOTAL_REQUESTS.fetch_add(1, Ordering::Relaxed);
     Ok(HttpResponse::Ok().json(json!({
         "jsonrpc": "2.0",
