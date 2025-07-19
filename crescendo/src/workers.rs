@@ -21,7 +21,7 @@ pub enum WorkerType {
 pub fn assign_workers(
     mut core_ids: Vec<CoreId>,
     assignments: Vec<(WorkerType, f64)>,
-    log_core_ranges: bool,
+    log_core_ranges: bool, // Enable to log the range of cores each worker should be pinned to.
 ) -> (Vec<(core_affinity::CoreId, WorkerType)>, HashMap<WorkerType, u64>) {
     let mut result = Vec::new();
     let mut worker_counts: HashMap<WorkerType, u64> = HashMap::new();
@@ -63,13 +63,17 @@ pub fn assign_workers(
     for (worker_type, count) in worker_counts.clone() {
         if log_core_ranges {
             if let Some(cores) = worker_cores.get(&worker_type) {
-                let core_ids: Vec<String> = cores.iter().map(|c| c.id.to_string()).collect();
-                let core_range = if cores.len() == 1 {
-                    format!("core {}", core_ids[0])
-                } else {
-                    format!("cores {}", core_ids.join(", "))
+                let mut core_ids: Vec<usize> = cores.iter().map(|c| c.id).collect();
+                core_ids.sort();
+
+                let core_str = match core_ids.as_slice() {
+                    [single] => format!("core {}", single),
+                    ids => {
+                        let ranges = format_ranges(ids);
+                        format!("cores {}", ranges)
+                    }
                 };
-                println!("- {:?}: {} ({})", worker_type, count, core_range);
+                println!("- {:?}: {} ({})", worker_type, count, core_str);
             }
         } else {
             println!("- {:?}: {}", worker_type, count);
@@ -77,4 +81,36 @@ pub fn assign_workers(
     }
 
     (result, worker_counts)
+}
+
+/// Format a sorted list of numbers into a range string (e.g., "1-3, 5, 7-9")
+fn format_ranges(nums: &[usize]) -> String {
+    if nums.is_empty() {
+        return String::new();
+    }
+
+    let mut ranges = Vec::new();
+    let mut i = 0;
+
+    while i < nums.len() {
+        let start = nums[i];
+        let mut end = start;
+
+        // Find end of consecutive sequence
+        while i + 1 < nums.len() && nums[i + 1] == nums[i] + 1 {
+            i += 1;
+            end = nums[i];
+        }
+
+        // Format this range
+        if start == end {
+            ranges.push(start.to_string());
+        } else {
+            ranges.push(format!("{}-{}", start, end));
+        }
+
+        i += 1;
+    }
+
+    ranges.join(", ")
 }
