@@ -20,7 +20,7 @@ use crate::workers::{DesireType, WorkerType};
 static GLOBAL: MiMalloc = MiMalloc;
 
 // TODO: Configurable CLI args.
-const TOTAL_CONNECTIONS: u64 = 20_000; // This is limited by the amount of ephemeral ports available on the system.
+const TOTAL_CONNECTIONS: u64 = 50_000; // This is limited by the amount of ephemeral ports available on the system.
 const THREAD_PINNING: bool = true;
 const TARGET_URL: &str = "http://127.0.0.1:8545";
 
