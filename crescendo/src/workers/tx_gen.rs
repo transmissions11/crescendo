@@ -1,5 +1,3 @@
-use std::str::FromStr;
-use std::sync::atomic::{AtomicU32, Ordering};
 
 use alloy::network::TxSignerSync;
 use alloy::primitives::{Address, Bytes, TxKind, U256};
