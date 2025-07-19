@@ -51,7 +51,7 @@ pub async fn network_worker(url: &str) {
                 }
             }
         } else {
-            println!("[*] No txs in queue, sleeping for 100ms...");
+            // Sleep for a bit while the tx queue repopulates.
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
     }
