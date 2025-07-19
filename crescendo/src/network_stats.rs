@@ -34,8 +34,8 @@ impl NetworkStats {
             interval.tick().await;
             let requests = self.requests.load(Ordering::Relaxed);
             let errors = self.errors.load(Ordering::Relaxed);
-            let rps = requests - last_requests;
-            let eps = errors - last_errors;
+            let rps = (requests - last_requests) / measurement_interval.as_secs();
+            let eps = (errors - last_errors) / measurement_interval.as_secs();
             println!(
                 "[*] RPS: {}, EPS: {}, Total requests: {}, Total errors: {}",
                 rps.separate_with_commas(),

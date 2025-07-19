@@ -76,8 +76,8 @@ async fn main() {
     }
 
     // Start reporters.
-    tokio::spawn(TX_QUEUE.start_reporter(Duration::from_secs(1)));
-    tokio::spawn(NETWORK_STATS.start_reporter(Duration::from_secs(1)))
+    tokio::spawn(TX_QUEUE.start_reporter(Duration::from_secs(3)));
+    tokio::spawn(NETWORK_STATS.start_reporter(Duration::from_secs(3)))
         .await // Keep the main thread alive forever.
         .unwrap();
 }
