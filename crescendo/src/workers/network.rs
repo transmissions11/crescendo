@@ -70,8 +70,7 @@ pub async fn network_worker(url: &str) {
                     }
                 }
             });
-
-            // tokio::time::sleep(Duration::from_millis(1)).await; // Sleep for a bit to avoid overwhelming the server.
+            tokio::time::sleep(Duration::from_millis(100)).await; // Sleep for a bit to avoid overwhelming the server.
         } else {
             // Sleep for a bit while the tx queue repopulates.
             tokio::time::sleep(Duration::from_millis(100)).await;
