@@ -54,7 +54,7 @@ pub async fn network_worker(url: &str) {
                                 NETWORK_STATS.inc_requests();
                             }
                             Err(e) => {
-                                println!("[!] Failed to read response body: {}", e);
+                                eprintln!("[!] Failed to read response body: {:?}", e);
                                 NETWORK_STATS.inc_errors();
                                 tokio::time::sleep(Duration::from_millis(100)).await;
                             }
@@ -66,7 +66,7 @@ pub async fn network_worker(url: &str) {
                     }
                 }
                 Err(e) => {
-                    eprintln!("[!] Request failed: {:#?}", e);
+                    eprintln!("[!] Request failed: {:?}", e);
                     NETWORK_STATS.inc_errors();
                     tokio::time::sleep(Duration::from_millis(100)).await;
                 }
