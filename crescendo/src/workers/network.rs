@@ -28,8 +28,6 @@ pub async fn network_worker(url: &str) {
                 hex::encode(&tx)
             );
 
-            println!("[!] Submitted payload: {}", json_body);
-
             let req = Request::builder()
                 .method("POST")
                 .uri(url)
