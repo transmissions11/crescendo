@@ -48,12 +48,14 @@ async fn main() {
         match worker_type {
             WorkerType::TxGen => {
                 thread::spawn(move || {
+                    println!("[TEMP] Spawning tx gen worker on core {}", core_id.id);
                     utils::maybe_pin_thread(core_id, THREAD_PINNING);
                     workers::tx_gen_worker();
                 });
             }
             WorkerType::Network => {
                 thread::spawn(move || {
+                    println!("[TEMP] Spawning network worker on core {}", core_id.id);
                     utils::maybe_pin_thread(core_id, THREAD_PINNING);
                     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 
