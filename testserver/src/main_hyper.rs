@@ -8,9 +8,14 @@ use hyper::body::Bytes;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
+use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 use tokio::time::{interval, sleep};
 use thousands::Separable;
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 static TOTAL_REQUESTS: AtomicU64 = AtomicU64::new(0);
 static CONCURRENT_REQUESTS: AtomicU64 = AtomicU64::new(0);
@@ -52,9 +57,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     loop {
         let (stream, _) = listener.accept().await?;
+        let io = TokioIo::new(stream);
+        
         tokio::spawn(async move {
             if let Err(err) = http1::Builder::new()
-                .serve_connection(stream, service_fn(handler))
+                .serve_connection(io, service_fn(handler))
                 .await
             {
                 eprintln!("Error serving connection: {:?}", err);
