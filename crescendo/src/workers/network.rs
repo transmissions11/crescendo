@@ -51,8 +51,10 @@ pub async fn network_worker(url: &str, worker_id: usize) {
             let start_time = Instant::now();
             match client.request(req).await {
                 Ok(res) => {
-                    let duration = start_time.elapsed();
-                    println!("[*] Worker {} request duration: {:?}", worker_id, duration);
+                    if worker_id == 0 {
+                        let duration = start_time.elapsed();
+                        println!("[*] Worker {} request duration: {:?}", worker_id, duration);
+                    }
 
                     if res.status() == StatusCode::OK {
                         match res.into_body().collect().await {
