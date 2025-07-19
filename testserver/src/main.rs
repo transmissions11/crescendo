@@ -17,9 +17,12 @@ static GLOBAL: MiMalloc = MiMalloc;
 // other frequently accessed memory can occur. To mitigate, we pad it
 // to the length of a full cache line to avoid conflict. Minor impact.
 static TOTAL_REQUESTS: CachePadded<AtomicU64> = CachePadded::new(AtomicU64::new(0));
+static CONCURRENT_REQUESTS: CachePadded<AtomicU64> = CachePadded::new(AtomicU64::new(0));
 
 async fn handler() -> Result<HttpResponse> {
+    CONCURRENT_REQUESTS.fetch_add(1, Ordering::Relaxed);
     tokio::time::sleep(Duration::from_millis(500)).await; // Simulate processing time.
+    CONCURRENT_REQUESTS.fetch_sub(1, Ordering::Relaxed);
     TOTAL_REQUESTS.fetch_add(1, Ordering::Relaxed);
     Ok(HttpResponse::Ok().json(json!({
         "jsonrpc": "2.0",
@@ -28,7 +31,7 @@ async fn handler() -> Result<HttpResponse> {
     })))
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 512)]
 async fn main() -> std::io::Result<()> {
     tokio::spawn({
         async move {
@@ -42,18 +45,22 @@ async fn main() -> std::io::Result<()> {
                 let rps = current_count - last_total;
                 last_total = current_count;
 
+                let concurrent = CONCURRENT_REQUESTS.load(Ordering::Relaxed);
                 println!(
-                    "RPS: {}, Total requests: {}",
+                    "RPS: {}, Total requests: {}, Concurrent: {}",
                     rps.separate_with_commas(),
-                    current_count.separate_with_commas()
+                    current_count.separate_with_commas(),
+                    concurrent.separate_with_commas()
                 );
             }
         }
     });
 
     println!("Server listening on http://127.0.0.1:8545");
+    println!("Tokio worker threads: 512, Actix workers: 256");
 
     HttpServer::new(move || App::new().route("/", web::to(handler)))
+        // .workers(256)  // Let actix choose based on CPU cores
         .max_connections(5_000_000)
         .max_connection_rate(50_000)
         .backlog(500_000)
