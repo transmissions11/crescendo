@@ -1,7 +1,8 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use actix_web::{web, App, HttpResponse, HttpServer, Result};
+use axum::routing::post;
+use axum::{Json, Router};
 use crossbeam_utils::CachePadded;
 use mimalloc::MiMalloc;
 use serde_json::json;
@@ -9,30 +10,25 @@ use thousands::Separable;
 use tokio::time::interval;
 
 #[global_allocator]
-// Increases RPS by ~2% at the time of
-// writing. About the same as jemalloc.
 static GLOBAL: MiMalloc = MiMalloc;
 
-// Depending on build config, false sharing with this static and some
-// other frequently accessed memory can occur. To mitigate, we pad it
-// to the length of a full cache line to avoid conflict. Minor impact.
 static TOTAL_REQUESTS: CachePadded<AtomicU64> = CachePadded::new(AtomicU64::new(0));
 static CONCURRENT_REQUESTS: CachePadded<AtomicU64> = CachePadded::new(AtomicU64::new(0));
 
-async fn handler() -> Result<HttpResponse> {
+async fn handler() -> Json<serde_json::Value> {
     CONCURRENT_REQUESTS.fetch_add(1, Ordering::Relaxed);
     tokio::time::sleep(Duration::from_millis(500)).await; // Simulate processing time.
     CONCURRENT_REQUESTS.fetch_sub(1, Ordering::Relaxed);
     TOTAL_REQUESTS.fetch_add(1, Ordering::Relaxed);
-    Ok(HttpResponse::Ok().json(json!({
+    Json(json!({
         "jsonrpc": "2.0",
-        "result": "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331", // example tx hash
+        "result": "hello world!",
         "id": 1
-    })))
+    }))
 }
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 512)]
-async fn main() -> std::io::Result<()> {
+#[tokio::main]
+async fn main() {
     tokio::spawn({
         async move {
             let mut interval = interval(Duration::from_secs(1));
@@ -56,11 +52,12 @@ async fn main() -> std::io::Result<()> {
         }
     });
 
-    println!("Server listening on http://127.0.0.1:8545");
-    println!("Tokio worker threads: 512, Actix workers: 50");
+    // build our application with a route
+    let app = Router::new().route("/", post(handler));
 
-    HttpServer::new(move || App::new().route("/", web::to(handler)))
-        .bind("127.0.0.1:8545")?
-        .run()
-        .await
+    println!("Server listening on http://127.0.0.1:8545");
+
+    // run our app with axum
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:8545").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
