@@ -38,7 +38,7 @@ async fn main() {
 
     // Given our desired breakdown of workers, translate this into actual numbers of workers to spawn.
     let (workers, worker_counts) =
-        workers::assign_workers(core_ids, vec![(WorkerType::TxGen, 0.), (WorkerType::Network, 1.)]);
+        workers::assign_workers(core_ids, vec![(WorkerType::TxGen, 0.25), (WorkerType::Network, 0.75)]);
 
     let connections_per_network_worker = TOTAL_CONNECTIONS / worker_counts[&WorkerType::Network];
     println!("[*] Connections per network worker: {}", connections_per_network_worker);
