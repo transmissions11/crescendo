@@ -39,12 +39,15 @@ async fn main() {
     // Given our desired breakdown of workers, translate this into actual numbers of workers to spawn.
     let (workers, worker_counts) = workers::assign_workers(
         core_ids, // Doesn't include the main runtime core.
-        vec![(WorkerType::TxGen, DesireType::Exact(5)), (WorkerType::Network, DesireType::Percentage(1.0))],
+        vec![(WorkerType::TxGen, DesireType::Exact(20)), (WorkerType::Network, DesireType::Percentage(1.0))],
         THREAD_PINNING, // Only log core ranges if thread pinning is actually enabled.
     );
 
     let connections_per_network_worker = TOTAL_CONNECTIONS / worker_counts[&WorkerType::Network];
     println!("[*] Connections per network worker: {}", connections_per_network_worker);
+
+    // TODO: Having the assign_workers function do this would be cleaner, also give ids to the network workers.
+    let mut tx_gen_worker_id = 0;
 
     // Spawn the workers, pinning them to the appropriate cores if enabled.
     for (core_id, worker_type) in workers {
@@ -52,8 +55,9 @@ async fn main() {
             WorkerType::TxGen => {
                 thread::spawn(move || {
                     utils::maybe_pin_thread(core_id, THREAD_PINNING);
-                    workers::tx_gen_worker();
+                    workers::tx_gen_worker(tx_gen_worker_id);
                 });
+                tx_gen_worker_id += 1;
             }
             WorkerType::Network => {
                 thread::spawn(move || {

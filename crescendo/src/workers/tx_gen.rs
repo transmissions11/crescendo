@@ -1,20 +1,31 @@
 use std::str::FromStr;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use alloy::network::TxSignerSync;
 use alloy::primitives::{Address, Bytes, TxKind, U256};
-use alloy::signers::local::PrivateKeySigner;
 use alloy_consensus::{SignableTransaction, TxLegacy};
+use alloy_signer_local::coins_bip39::English;
+use alloy_signer_local::{MnemonicBuilder, PrivateKeySigner};
 
 use crate::tx_queue::TX_QUEUE;
 
 const CHAIN_ID: u64 = 1337;
 
-pub fn tx_gen_worker() {
+pub fn tx_gen_worker(worker_id: u32) {
     let mut nonce = 0u64;
 
+    if nonce == 0 {
+        println!("[*] Worker {} starting nonce at 0.", worker_id);
+    }
+
+    let signer = MnemonicBuilder::<English>::default()
+        .phrase("test test test test test test test test test test test junk")
+        .index(worker_id)
+        .unwrap()
+        .build()
+        .unwrap();
+
     loop {
-        let signer =
-            PrivateKeySigner::from_str("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80").unwrap();
         let tx = generate_and_sign_tx(
             &signer,
             CHAIN_ID,
