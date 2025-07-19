@@ -15,3 +15,8 @@ rlimit = "0.10.2"
 num_cpus = "1.17.0"
 crossbeam-utils = "0.8.21"
 mimalloc = "0.1.47"
+alloy = { version = "1", features = ["genesis", "signers"] }
+alloy-evm = "0.13"
+alloy-consensus = { version = "1", features = ["secp256k1"] }
+alloy-signer-local = { version = "1", features = ["mnemonic"] }
+core_affinity = "0.8.3"

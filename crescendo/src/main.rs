@@ -2,50 +2,82 @@ use std::future::pending;
 use std::thread;
 use std::time::Duration;
 
+use core_affinity;
 use mimalloc::MiMalloc;
-use stats::STATS;
 
-mod stats;
+mod network_stats;
+mod tx_queue;
 mod utils;
-mod worker;
+mod workers;
+
+use crate::network_stats::NETWORK_STATS;
+use crate::tx_queue::TX_QUEUE;
+use crate::workers::{DesireType, WorkerType};
 
 #[global_allocator]
 // Increases RPS by ~5.5% at the time of
 // writing. ~3.3% faster than jemalloc.
 static GLOBAL: MiMalloc = MiMalloc;
 
-const TOTAL_CONNECTIONS: u64 = 4096;
-const TARGET_URL: &str = "http://127.0.0.1:8080";
+// TODO: Configurable CLI args.
+const TOTAL_CONNECTIONS: u64 = 20_000; // This is limited by the amount of ephemeral ports available on the system.
+const THREAD_PINNING: bool = true;
+const TARGET_URL: &str = "http://127.0.0.1:8545";
 
-#[tokio::main(worker_threads = 1)]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let num_threads = num_cpus::get() as u64;
-    let connections_per_thread = TOTAL_CONNECTIONS / num_threads;
-
     if let Err(err) = utils::increase_nofile_limit(TOTAL_CONNECTIONS * 10) {
-        println!("Failed to increase file descriptor limit: {err}.");
+        println!("[!] Failed to increase file descriptor limit: {err}.");
     }
 
-    println!(
-        "Running {} threads with {} connections each against {}...",
-        num_threads, connections_per_thread, TARGET_URL
+    let mut core_ids = core_affinity::get_core_ids().unwrap();
+    println!("[*] Detected {} effective cores.", core_ids.len());
+
+    // Pin the tokio runtime to a core (if enabled).
+    utils::maybe_pin_thread(core_ids.pop().unwrap(), THREAD_PINNING);
+
+    // Given our desired breakdown of workers, translate this into actual numbers of workers to spawn.
+    let (workers, worker_counts) = workers::assign_workers(
+        core_ids, // Doesn't include the main runtime core.
+        vec![(WorkerType::TxGen, DesireType::Exact(20)), (WorkerType::Network, DesireType::Percentage(1.0))],
+        THREAD_PINNING, // Only log core ranges if thread pinning is actually enabled.
     );
 
-    // Spawn all worker threads.
-    for _ in 0..num_threads {
-        thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
-            rt.block_on(async {
-                for _ in 0..connections_per_thread {
-                    tokio::spawn(worker::connection_worker(TARGET_URL));
-                }
-                pending::<()>().await; // Keep the runtime alive forever.
-            });
-        });
+    let connections_per_network_worker = TOTAL_CONNECTIONS / worker_counts[&WorkerType::Network];
+    println!("[*] Connections per network worker: {}", connections_per_network_worker);
+
+    // TODO: Having the assign_workers function do this would be cleaner, also give ids to the network workers.
+    let mut tx_gen_worker_id = 0;
+
+    // Spawn the workers, pinning them to the appropriate cores if enabled.
+    for (core_id, worker_type) in workers {
+        match worker_type {
+            WorkerType::TxGen => {
+                thread::spawn(move || {
+                    utils::maybe_pin_thread(core_id, THREAD_PINNING);
+                    workers::tx_gen_worker(tx_gen_worker_id);
+                });
+                tx_gen_worker_id += 1;
+            }
+            WorkerType::Network => {
+                thread::spawn(move || {
+                    utils::maybe_pin_thread(core_id, THREAD_PINNING);
+                    let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+
+                    rt.block_on(async {
+                        for _ in 0..connections_per_network_worker {
+                            tokio::spawn(workers::network_worker(TARGET_URL));
+                        }
+                        pending::<()>().await; // Keep the runtime alive forever.
+                    });
+                });
+            }
+        }
     }
 
-    // Start stats reporter.
-    tokio::spawn(STATS.start_reporter(Duration::from_secs(1)))
+    // Start reporters.
+    tokio::spawn(TX_QUEUE.start_reporter(Duration::from_secs(1)));
+    tokio::spawn(NETWORK_STATS.start_reporter(Duration::from_secs(1)))
         .await // Keep the main thread alive forever.
         .unwrap();
 }

@@ -1,9 +1,12 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
+use actix_web::web::Json;
 use actix_web::{web, App, HttpResponse, HttpServer, Result};
 use crossbeam_utils::CachePadded;
 use mimalloc::MiMalloc;
+use serde::Deserialize;
+use serde_json::json;
 use thousands::Separable;
 use tokio::time::interval;
 
@@ -17,9 +20,36 @@ static GLOBAL: MiMalloc = MiMalloc;
 // to the length of a full cache line to avoid conflict. Minor impact.
 static TOTAL_REQUESTS: CachePadded<AtomicU64> = CachePadded::new(AtomicU64::new(0));
 
-async fn handler() -> Result<HttpResponse> {
+#[derive(Deserialize, Debug)]
+struct JsonRpcRequest {
+    jsonrpc: String,
+    method: String,
+    params: Vec<String>,
+    id: u64,
+}
+
+async fn handler(body: Json<JsonRpcRequest>) -> Result<HttpResponse> {
+    if body.jsonrpc != "2.0" {
+        return Ok(HttpResponse::BadRequest().body("Invalid jsonrpc version"));
+    }
+    if body.method != "eth_sendRawTransaction" {
+        return Ok(HttpResponse::BadRequest().body("Invalid method"));
+    }
+    if body.params.len() != 1 {
+        return Ok(HttpResponse::BadRequest().body("Invalid params length"));
+    }
+    if !body.params[0].starts_with("0x") {
+        return Ok(HttpResponse::BadRequest().body("Transaction hash must start with 0x"));
+    }
+
+    tokio::time::sleep(Duration::from_millis(500)).await; // Simulate processing time.
+
     TOTAL_REQUESTS.fetch_add(1, Ordering::Relaxed);
-    Ok(HttpResponse::Ok().body("Hello, world!"))
+    Ok(HttpResponse::Ok().json(json!({
+        "jsonrpc": "2.0",
+        "result": "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331", // example tx hash
+        "id": body.id
+    })))
 }
 
 #[tokio::main]
@@ -45,15 +75,12 @@ async fn main() -> std::io::Result<()> {
         }
     });
 
-    println!("Server listening on http://127.0.0.1:8080");
+    println!("Server listening on http://127.0.0.1:8545");
 
-    HttpServer::new(move || {
-        App::new()
-            .route("/", web::get().to(handler))
-            .route("/", web::post().to(handler))
-            .default_service(web::route().to(handler))
-    })
-    .bind("127.0.0.1:8080")?
-    .run()
-    .await
+    HttpServer::new(move || App::new().route("/", web::post().to(handler)))
+        .max_connections(5_000_000)
+        .max_connection_rate(50_000)
+        .bind("127.0.0.1:8545")?
+        .run()
+        .await
 }
