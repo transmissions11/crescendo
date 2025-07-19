@@ -44,9 +44,8 @@ pub async fn network_worker(url: &str) {
                                 let body_bytes = collected.to_bytes();
                                 let body_str = std::str::from_utf8(&body_bytes).unwrap();
 
-                                println!("[!] RPC  response: {}", body_str);
-
                                 if body_str.contains("\"error\":") {
+                                    println!("[!] RPC  response: {}", body_str);
                                     NETWORK_STATS.inc_errors();
                                     tokio::time::sleep(Duration::from_millis(100)).await;
                                     continue;

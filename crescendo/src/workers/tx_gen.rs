@@ -15,7 +15,15 @@ pub fn tx_gen_worker() {
     loop {
         let signer =
             PrivateKeySigner::from_str("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80").unwrap();
-        let tx = generate_and_sign_tx(&signer, CHAIN_ID, nonce, 0, 100_000, Address::from([0; 20]), Bytes::new());
+        let tx = generate_and_sign_tx(
+            &signer,
+            CHAIN_ID,
+            nonce,
+            100000000000, // 100 gwei
+            100_000,
+            Address::from([0; 20]),
+            Bytes::new(),
+        );
         TX_QUEUE.push_tx(tx);
         nonce += 1;
     }
