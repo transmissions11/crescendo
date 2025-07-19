@@ -21,7 +21,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 // TODO: Configurable CLI args.
 const TOTAL_CONNECTIONS: u64 = 4096;
-const THREAD_PINNING: bool = false;
+const THREAD_PINNING: bool = true;
 const TARGET_URL: &str = "http://127.0.0.1:8080";
 
 #[tokio::main(flavor = "current_thread")]
