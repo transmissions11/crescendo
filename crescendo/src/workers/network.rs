@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use alloy::primitives::{hex, Bytes};
 use http::StatusCode;
@@ -47,8 +47,16 @@ pub async fn network_worker(url: &str) {
                 .body(Full::new(Bytes::from(json_body.into_bytes())))
                 .unwrap();
 
+            let start_time = Instant::now();
             match client.request(req).await {
                 Ok(res) => {
+                    let duration = start_time.elapsed();
+                    println!(
+                        "[*] Request duration: {:?}, Duration per tx: {:?}",
+                        duration,
+                        duration / txs.len() as u32
+                    );
+
                     if res.status() == StatusCode::OK {
                         // Decode and print the response body
                         match res.into_body().collect().await {
