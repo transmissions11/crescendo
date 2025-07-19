@@ -24,7 +24,7 @@ pub async fn network_worker(url: &str) {
     loop {
         if let Some(tx) = TX_QUEUE.pop_tx() {
             let json_body = format!(
-                r#"{{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["0x{}"],"id":1}}"#,
+                r#"{{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0x{}"],"id":1}}"#,
                 hex::encode(&tx)
             );
 
