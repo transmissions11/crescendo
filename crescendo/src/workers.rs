@@ -8,6 +8,8 @@ mod tx_gen;
 pub use network::network_worker;
 pub use tx_gen::tx_gen_worker;
 
+use crate::utils::format_ranges;
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum WorkerType {
     TxGen,
@@ -18,6 +20,11 @@ pub enum WorkerType {
 ///
 /// Assumes that thread pinning is desired and thus maps each worker to a core, but this can be
 /// ignored if desired, of course. Each worker type will be assigned at least one core.
+///
+/// TODO: The first worker for each type is assigned a core at the end of the core list. This is
+/// not ideal, as it means workers are not placed in contiguous ranges of cores, which is gross
+/// for monitoring performance but also could also slightly hurt cache locality. Should refactor
+/// to ensure each worker type is assigned a contiguous range of cores no matter what.
 pub fn assign_workers(
     mut core_ids: Vec<CoreId>,
     assignments: Vec<(WorkerType, f64)>,
@@ -68,10 +75,7 @@ pub fn assign_workers(
 
                 let core_str = match core_ids.as_slice() {
                     [single] => format!("core {}", single),
-                    ids => {
-                        let ranges = format_ranges(ids);
-                        format!("cores {}", ranges)
-                    }
+                    ids => format!("cores {}", format_ranges(ids)),
                 };
                 println!("- {:?}: {} ({})", worker_type, count, core_str);
             }
@@ -81,36 +85,4 @@ pub fn assign_workers(
     }
 
     (result, worker_counts)
-}
-
-/// Format a sorted list of numbers into a range string (e.g., "1-3, 5, 7-9")
-fn format_ranges(nums: &[usize]) -> String {
-    if nums.is_empty() {
-        return String::new();
-    }
-
-    let mut ranges = Vec::new();
-    let mut i = 0;
-
-    while i < nums.len() {
-        let start = nums[i];
-        let mut end = start;
-
-        // Find end of consecutive sequence
-        while i + 1 < nums.len() && nums[i + 1] == nums[i] + 1 {
-            i += 1;
-            end = nums[i];
-        }
-
-        // Format this range
-        if start == end {
-            ranges.push(start.to_string());
-        } else {
-            ranges.push(format!("{}-{}", start, end));
-        }
-
-        i += 1;
-    }
-
-    ranges.join(", ")
 }
