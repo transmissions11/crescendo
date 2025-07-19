@@ -20,7 +20,6 @@ static TOTAL_REQUESTS: CachePadded<AtomicU64> = CachePadded::new(AtomicU64::new(
 
 async fn handler() -> Result<HttpResponse> {
     tokio::time::sleep(Duration::from_millis(500)).await; // Simulate processing time.
-
     TOTAL_REQUESTS.fetch_add(1, Ordering::Relaxed);
     Ok(HttpResponse::Ok().json(json!({
         "jsonrpc": "2.0",
@@ -54,7 +53,7 @@ async fn main() -> std::io::Result<()> {
 
     println!("Server listening on http://127.0.0.1:8545");
 
-    HttpServer::new(move || App::new().route("/", web::post().to(handler)))
+    HttpServer::new(move || App::new().route("/", web::to(handler)))
         .max_connections(5_000_000)
         .max_connection_rate(50_000)
         .backlog(500_000)
