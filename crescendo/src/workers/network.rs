@@ -38,7 +38,6 @@ pub async fn network_worker(url: &str) {
             match client.request(req).await {
                 Ok(res) => {
                     if res.status() == StatusCode::OK {
-                        tokio::time::sleep(Duration::from_millis(1000)).await;
                         // Decode and print the response body
                         match res.into_body().collect().await {
                             Ok(collected) => {
