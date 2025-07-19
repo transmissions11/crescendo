@@ -19,6 +19,14 @@ impl TxQueue {
         self.queue.lock().map(|q| q.len()).unwrap_or(0)
     }
 
+    pub fn pop_tx(&self) -> Option<Vec<u8>> {
+        if let Ok(mut queue) = self.queue.lock() {
+            queue.pop()
+        } else {
+            None
+        }
+    }
+
     pub async fn start_reporter(&self, measurement_interval: std::time::Duration) {
         let mut last_queue_len = 0usize;
         let mut interval = tokio::time::interval(measurement_interval);

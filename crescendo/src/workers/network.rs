@@ -1,42 +1,60 @@
 use std::time::Duration;
 
-use alloy::primitives::Bytes;
+use alloy::primitives::{hex, Bytes};
 use http::StatusCode;
-use http_body_util::Empty;
+use http_body_util::Full;
 use hyper::Request;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
 
 use crate::network_stats::NETWORK_STATS;
+use crate::tx_queue::TX_QUEUE;
 
 pub async fn network_worker(url: &str) {
     let mut connector = HttpConnector::new();
     connector.set_nodelay(true);
     connector.set_keepalive(Some(Duration::from_secs(60)));
 
-    let client: Client<_, Empty<Bytes>> = Client::builder(TokioExecutor::new())
+    let client: Client<_, Full<Bytes>> = Client::builder(TokioExecutor::new())
         .pool_idle_timeout(Duration::from_secs(90))
         .pool_max_idle_per_host(100)
         .build(connector);
 
-    let req = Request::builder().uri(url).body(Empty::<Bytes>::new()).unwrap();
-
     loop {
-        match client.request(req.clone()).await {
-            Ok(res) => {
-                if res.status() == StatusCode::OK {
-                    NETWORK_STATS.inc_requests();
-                } else {
-                    println!("[!] Request did not have OK status: {:?}", res);
+        if let Some(tx) = TX_QUEUE.pop_tx() {
+            let json_body = format!(
+                r#"{{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["0x{}"],"id":1}}"#,
+                hex::encode(&tx)
+            );
+
+            println!("Submitting tx: {}", json_body);
+
+            let req = Request::builder()
+                .method("POST")
+                .uri(url)
+                .header("Content-Type", "application/json")
+                .body(Full::new(Bytes::from(json_body.into_bytes())))
+                .unwrap();
+
+            match client.request(req).await {
+                Ok(res) => {
+                    if res.status() == StatusCode::OK {
+                        NETWORK_STATS.inc_requests();
+                    } else {
+                        println!("[!] Request did not have OK status: {:?}", res);
+                        NETWORK_STATS.inc_errors();
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[!] Request failed: {}", e);
                     NETWORK_STATS.inc_errors();
+                    tokio::time::sleep(Duration::from_millis(10)).await; // Small backoff on error.
                 }
             }
-            Err(e) => {
-                eprintln!("[!] Request failed: {}", e);
-                NETWORK_STATS.inc_errors();
-                tokio::time::sleep(Duration::from_millis(10)).await; // Small backoff on error.
-            }
+        } else {
+            println!("[*] No txs in queue, sleeping for 100ms...");
+            tokio::time::sleep(Duration::from_millis(100)).await;
         }
     }
 }
