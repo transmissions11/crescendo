@@ -1,19 +1,21 @@
+use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
 use thousands::Separable;
 
 pub struct TxQueue {
-    queue: Mutex<Vec<Vec<u8>>>,
+    // TODO: RwLock? Natively concurrent deque?
+    queue: Mutex<VecDeque<Vec<u8>>>,
     total_added: AtomicU64,
 }
 
-pub static TX_QUEUE: TxQueue = TxQueue { queue: Mutex::new(Vec::new()), total_added: AtomicU64::new(0) };
+pub static TX_QUEUE: TxQueue = TxQueue { queue: Mutex::new(VecDeque::new()), total_added: AtomicU64::new(0) };
 
 impl TxQueue {
     pub fn push_tx(&self, tx: Vec<u8>) {
         self.total_added.fetch_add(1, Ordering::Relaxed);
-        self.queue.lock().unwrap().push(tx);
+        self.queue.lock().unwrap().push_back(tx);
     }
 
     pub fn queue_len(&self) -> usize {
@@ -22,7 +24,7 @@ impl TxQueue {
 
     pub fn pop_tx(&self) -> Option<Vec<u8>> {
         if let Ok(mut queue) = self.queue.lock() {
-            queue.pop()
+            queue.pop_front()
         } else {
             None
         }
