@@ -10,9 +10,8 @@ const CHAIN_ID: u64 = 1337;
 pub fn tx_gen_worker() {
     let mut nonce = 0u64;
 
-    let signer = PrivateKeySigner::random();
-
     loop {
+        let signer = PrivateKeySigner::random();
         let tx = generate_and_sign_tx(&signer, CHAIN_ID, nonce, 0, 100_000, Address::from([0; 20]), Bytes::new());
         TX_QUEUE.push_tx(tx);
         nonce += 1;
