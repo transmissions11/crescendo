@@ -33,6 +33,7 @@ impl TxQueue {
             None
         }
     }
+
     pub async fn start_reporter(&self, measurement_interval: std::time::Duration) {
         let mut last_total_added = 0u64;
         let mut last_queue_len = 0usize;
