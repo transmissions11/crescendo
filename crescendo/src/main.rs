@@ -46,8 +46,9 @@ async fn main() {
     let connections_per_network_worker = TOTAL_CONNECTIONS / worker_counts[&WorkerType::Network];
     println!("[*] Connections per network worker: {}", connections_per_network_worker);
 
-    // TODO: Having the assign_workers function do this would be cleaner, also give ids to the network workers.
+    // TODO: Having the assign_workers function do this would be cleaner.
     let mut tx_gen_worker_id = 0;
+    let mut network_worker_id = 0;
 
     println!("[*] Starting workers...");
 
@@ -68,7 +69,8 @@ async fn main() {
 
                     rt.block_on(async {
                         for _ in 0..connections_per_network_worker {
-                            tokio::spawn(workers::network_worker(TARGET_URL));
+                            tokio::spawn(workers::network_worker(TARGET_URL, network_worker_id));
+                            network_worker_id += 1;
                         }
                         pending::<()>().await; // Keep the runtime alive forever.
                     });
