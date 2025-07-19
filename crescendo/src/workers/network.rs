@@ -28,6 +28,8 @@ pub async fn network_worker(url: &str) {
                 hex::encode(&tx)
             );
 
+            println!("[!] Submitted payload: {}", json_body);
+
             let req = Request::builder()
                 .method("POST")
                 .uri(url)
@@ -46,7 +48,7 @@ pub async fn network_worker(url: &str) {
 
                                 if body_str.contains("\"error\":") {
                                     println!("[!] RPC error response: {}", body_str);
-                                    println!("[!] Submitted payload: {}", json_body);
+
                                     NETWORK_STATS.inc_errors();
                                     tokio::time::sleep(Duration::from_millis(100)).await;
                                     continue;
