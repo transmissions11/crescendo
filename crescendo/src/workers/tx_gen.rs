@@ -30,7 +30,7 @@ pub fn tx_gen_worker(worker_id: u32) {
             &signer,
             CHAIN_ID,
             nonce,
-            1, // 1 wei
+            100_000_000_000, // 100 gwei
             100_000,
             Address::from([0; 20]),
             Bytes::new(),
