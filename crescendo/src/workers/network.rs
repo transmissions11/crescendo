@@ -35,11 +35,8 @@ pub async fn network_worker(url: &str) {
                 .body(Full::new(Bytes::from(json_body.into_bytes())))
                 .unwrap();
 
-            let start = std::time::Instant::now();
             match client.request(req).await {
                 Ok(res) => {
-                    let elapsed = start.elapsed();
-                    println!("[DEBUG] Request completed in {:?}", elapsed);
                     if res.status() == StatusCode::OK {
                         // Decode and print the response body
                         match res.into_body().collect().await {

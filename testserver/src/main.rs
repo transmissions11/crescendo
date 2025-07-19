@@ -8,7 +8,7 @@ use mimalloc::MiMalloc;
 use serde::Deserialize;
 use serde_json::json;
 use thousands::Separable;
-use tokio::time::{interval, sleep};
+use tokio::time::interval;
 
 #[global_allocator]
 // Increases RPS by ~2% at the time of
@@ -43,10 +43,6 @@ async fn handler(body: Json<JsonRpcRequest>) -> Result<HttpResponse> {
     }
 
     TOTAL_REQUESTS.fetch_add(1, Ordering::Relaxed);
-
-    // Wait 100ms before responding
-    sleep(Duration::from_millis(100)).await;
-
     Ok(HttpResponse::Ok().json(json!({
         "jsonrpc": "2.0",
         "result": "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331", // example tx hash
