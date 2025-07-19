@@ -20,7 +20,7 @@ use crate::workers::{DesireType, WorkerType};
 static GLOBAL: MiMalloc = MiMalloc;
 
 // TODO: Configurable CLI args.
-const TOTAL_CONNECTIONS: u64 = 8192;
+const TOTAL_CONNECTIONS: u64 = 100_000;
 const THREAD_PINNING: bool = true;
 const TARGET_URL: &str = "http://127.0.0.1:8545";
 
