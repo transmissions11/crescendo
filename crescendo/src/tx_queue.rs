@@ -22,16 +22,20 @@ impl TxQueue {
         self.queue.lock().map(|q| q.len()).unwrap_or(0)
     }
 
-    pub fn pop_tx(&self) -> Option<Vec<u8>> {
-        if let Ok(mut queue) = self.queue.lock() {
-            // It's important to pop from the front here, otherwise the node
-            // gets confused seeing a bunch of txs with incredibly high nonces
-            // before it sees any of the lower ones. It's possible this issue
-            // could still emerge at high enough RPS, but haven't seen it yet.
-            queue.pop_front()
-        } else {
-            None
+    pub fn pop_at_most(&self, max_count: usize) -> Option<Vec<Vec<u8>>> {
+        let mut queue = self.queue.lock().ok()?;
+
+        let count = max_count.min(queue.len());
+        if count == 0 {
+            return None;
         }
+
+        // TODO: Is drain more or less efficient than repeated pop_front?
+        // It's important to pop from the front here, otherwise the node
+        // gets confused seeing a bunch of txs with incredibly high nonces
+        // before it sees any of the lower ones. It's possible this issue
+        // could still emerge at high enough RPS, but haven't seen it yet.
+        Some(queue.drain(..count).collect())
     }
 
     pub async fn start_reporter(&self, measurement_interval: std::time::Duration) {

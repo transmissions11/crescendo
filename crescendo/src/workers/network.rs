@@ -11,6 +11,8 @@ use hyper_util::rt::TokioExecutor;
 use crate::network_stats::NETWORK_STATS;
 use crate::tx_queue::TX_QUEUE;
 
+const BATCH_FACTOR: usize = 10; // How many txs to send in a single request.
+
 pub async fn network_worker(url: &str) {
     let mut connector = HttpConnector::new();
     connector.set_nodelay(true);
@@ -22,10 +24,20 @@ pub async fn network_worker(url: &str) {
         .build(connector);
 
     loop {
-        if let Some(tx) = TX_QUEUE.pop_tx() {
+        if let Some(txs) = TX_QUEUE.pop_at_most(BATCH_FACTOR) {
             let json_body = format!(
-                r#"{{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0x{}"],"id":1}}"#,
-                hex::encode(&tx)
+                "[{}]",
+                txs.iter()
+                    .enumerate()
+                    .map(|(i, tx)| {
+                        format!(
+                            r#"{{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0x{}"],"id":{}}}"#,
+                            hex::encode(tx),
+                            i + 1
+                        )
+                    })
+                    .collect::<Vec<String>>()
+                    .join(",")
             );
 
             let req = Request::builder()
@@ -45,7 +57,7 @@ pub async fn network_worker(url: &str) {
                                 let body_str = std::str::from_utf8(&body_bytes).unwrap();
 
                                 if body_str.contains("\"error\":") {
-                                    println!("[!] RPC  response: {}", body_str);
+                                    println!("[!] RPC error response: {}", body_str);
                                     NETWORK_STATS.inc_errors();
                                     tokio::time::sleep(Duration::from_millis(100)).await;
                                     continue;
