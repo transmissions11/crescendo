@@ -12,7 +12,7 @@ mod workers;
 
 use crate::network_stats::NETWORK_STATS;
 use crate::tx_queue::TX_QUEUE;
-use crate::workers::WorkerType;
+use crate::workers::{DesireType, WorkerType};
 
 #[global_allocator]
 // Increases RPS by ~5.5% at the time of
@@ -39,7 +39,7 @@ async fn main() {
     // Given our desired breakdown of workers, translate this into actual numbers of workers to spawn.
     let (workers, worker_counts) = workers::assign_workers(
         core_ids, // Doesn't include the main runtime core.
-        vec![(WorkerType::TxGen, 0.0), (WorkerType::Network, 1.0)],
+        vec![(WorkerType::TxGen, DesireType::Exact(5)), (WorkerType::Network, DesireType::Percentage(1.0))],
         THREAD_PINNING, // Only log core ranges if thread pinning is actually enabled.
     );
 
