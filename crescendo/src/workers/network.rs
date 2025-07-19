@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use alloy::primitives::{hex, Bytes};
 use http::StatusCode;
-use http_body_util::Full;
+use http_body_util::{BodyExt, Full};
 use hyper::Request;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
@@ -38,6 +38,20 @@ pub async fn network_worker(url: &str) {
             match client.request(req).await {
                 Ok(res) => {
                     if res.status() == StatusCode::OK {
+                        // Decode and print the response body
+                        match res.into_body().collect().await {
+                            Ok(collected) => {
+                                let body_bytes = collected.to_bytes();
+                                if let Ok(body_str) = std::str::from_utf8(&body_bytes) {
+                                    println!("[+] Response body: {}", body_str);
+                                } else {
+                                    println!("[!] Response body is not valid UTF-8");
+                                }
+                            }
+                            Err(e) => {
+                                println!("[!] Failed to read response body: {}", e);
+                            }
+                        }
                         NETWORK_STATS.inc_requests();
                     } else {
                         println!("[!] Request did not have OK status: {:?}", res);
