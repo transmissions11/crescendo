@@ -39,7 +39,7 @@ impl TxQueue {
             let added_per_second = current_total_added - last_total_added;
             let queue_growth = current_queue_len.saturating_sub(last_queue_len);
             println!(
-                "[*] TxQueue +/s: {}, TxQueue Δ/s: {}, Total length: {}",
+                "[*] TxQueue +/s: {}, TxQueue Δ/s: {}, Current length: {}",
                 added_per_second.separate_with_commas(),
                 queue_growth.separate_with_commas(),
                 current_queue_len.separate_with_commas()
