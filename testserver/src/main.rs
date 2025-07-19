@@ -75,5 +75,10 @@ async fn main() -> std::io::Result<()> {
 
     println!("Server listening on http://127.0.0.1:8545");
 
-    HttpServer::new(move || App::new().route("/", web::post().to(handler))).bind("127.0.0.1:8545")?.run().await
+    HttpServer::new(move || App::new().route("/", web::post().to(handler)))
+        .max_connections(5_000_000)
+        .max_connection_rate(50_000)
+        .bind("127.0.0.1:8545")?
+        .run()
+        .await
 }
