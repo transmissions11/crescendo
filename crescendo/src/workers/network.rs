@@ -11,7 +11,7 @@ use hyper_util::rt::TokioExecutor;
 use crate::network_stats::NETWORK_STATS;
 use crate::tx_queue::TX_QUEUE;
 
-const BATCH_FACTOR: usize = 10; // How many txs to send in a single request.
+const BATCH_FACTOR: usize = 1; // How many txs to send in a single request.
 
 pub async fn network_worker(url: &str) {
     let mut connector = HttpConnector::new();

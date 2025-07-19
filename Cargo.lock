@@ -4212,9 +4212,6 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "crossbeam-utils",
- "http-body-util",
- "hyper",
- "hyper-util",
  "mimalloc",
  "num_cpus",
  "serde",
