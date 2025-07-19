@@ -68,13 +68,13 @@ async fn main() {
                     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 
                     rt.block_on(async {
-                        for _ in 0..connections_per_network_worker {
-                            tokio::spawn(workers::network_worker(TARGET_URL, network_worker_id));
-                            network_worker_id += 1;
+                        for i in 0..connections_per_network_worker {
+                            tokio::spawn(workers::network_worker(TARGET_URL, (network_worker_id * i) as usize));
                         }
                         pending::<()>().await; // Keep the runtime alive forever.
                     });
                 });
+                network_worker_id += 1;
             }
         }
     }
