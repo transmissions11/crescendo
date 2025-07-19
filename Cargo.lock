@@ -4445,6 +4445,8 @@ dependencies = [
  "crossbeam-utils",
  "mimalloc",
  "num_cpus",
+ "serde",
+ "serde_json",
  "thousands",
  "tokio",
 ]
