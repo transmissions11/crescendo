@@ -52,6 +52,8 @@ pub fn generate_and_sign_tx(
 }
 
 pub fn sign_and_encode_tx(signer: &PrivateKeySigner, mut tx: TxLegacy) -> Vec<u8> {
+    // TODO: Upstream to alloy the ability to use the secp256k1
+    // crate instead of k256 for this which is like 5x+ faster.
     let signature = signer.sign_transaction_sync(&mut tx).unwrap();
     let mut payload = Vec::new();
     tx.into_signed(signature).eip2718_encode(&mut payload);
