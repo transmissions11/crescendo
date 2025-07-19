@@ -57,10 +57,10 @@ async fn main() -> std::io::Result<()> {
     });
 
     println!("Server listening on http://127.0.0.1:8545");
-    println!("Tokio worker threads: 512, Actix workers: 256");
+    println!("Tokio worker threads: 512, Actix workers: 1");
 
     HttpServer::new(move || App::new().route("/", web::to(handler)))
-        // .workers(256)  // Let actix choose based on CPU cores
+        .workers(1)  // Force 1 worker to isolate the limit
         .max_connections(5_000_000)
         .max_connection_rate(50_000)
         .backlog(500_000)
