@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use axum::routing::post;
+use axum::routing::get;
 use axum::{Json, Router};
 use crossbeam_utils::CachePadded;
 use mimalloc::MiMalloc;
@@ -52,12 +52,10 @@ async fn main() {
         }
     });
 
-    // build our application with a route
-    let app = Router::new().route("/", post(handler));
+    let app = Router::new().route("/", get(handler).post(handler));
 
     println!("Server listening on http://127.0.0.1:8545");
 
-    // run our app with axum
     let listener = tokio::net::TcpListener::bind("127.0.0.1:8545").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
