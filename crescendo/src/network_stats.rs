@@ -17,12 +17,12 @@ pub static NETWORK_STATS: CachePadded<NetworkStats> =
     CachePadded::new(NetworkStats { requests: AtomicU64::new(0), errors: AtomicU64::new(0) });
 
 impl NetworkStats {
-    pub fn inc_requests(&self) {
-        self.requests.fetch_add(1, Ordering::Relaxed);
+    pub fn inc_requests_by(&self, count: usize) {
+        self.requests.fetch_add(count as u64, Ordering::Relaxed);
     }
 
-    pub fn inc_errors(&self) {
-        self.errors.fetch_add(1, Ordering::Relaxed);
+    pub fn inc_errors_by(&self, count: usize) {
+        self.errors.fetch_add(count as u64, Ordering::Relaxed);
     }
 
     pub async fn start_reporter(&self, measurement_interval: Duration) {

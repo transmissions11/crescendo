@@ -55,30 +55,29 @@ pub async fn network_worker(url: &str) {
                                 let body_bytes = collected.to_bytes();
                                 let body_str = std::str::from_utf8(&body_bytes).unwrap();
 
-                                if body_str.contains("\"error\":") {
-                                    println!("[!] RPC error response: {}", body_str);
-                                    NETWORK_STATS.inc_errors();
-                                    tokio::time::sleep(Duration::from_millis(100)).await;
-                                    continue;
+                                let error_count = body_str.matches("\"error\":").count();
+                                if error_count > 0 {
+                                    println!("[!] RPC response ({}/{} errored): {}", error_count, txs.len(), body_str);
+                                    NETWORK_STATS.inc_errors_by(error_count);
                                 }
 
-                                NETWORK_STATS.inc_requests();
+                                NETWORK_STATS.inc_requests_by(txs.len() - error_count);
                             }
                             Err(e) => {
                                 eprintln!("[!] Failed to read response body: {:?}", e);
-                                NETWORK_STATS.inc_errors();
+                                NETWORK_STATS.inc_errors_by(txs.len());
                                 tokio::time::sleep(Duration::from_millis(100)).await;
                             }
                         }
                     } else {
                         println!("[!] Request did not have OK status: {:?}", res);
-                        NETWORK_STATS.inc_errors();
+                        NETWORK_STATS.inc_errors_by(txs.len());
                         tokio::time::sleep(Duration::from_millis(100)).await;
                     }
                 }
                 Err(e) => {
                     eprintln!("[!] Request failed: {:?}", e);
-                    NETWORK_STATS.inc_errors();
+                    NETWORK_STATS.inc_errors_by(txs.len());
                     tokio::time::sleep(Duration::from_millis(100)).await;
                 }
             }
