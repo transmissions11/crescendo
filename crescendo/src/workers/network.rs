@@ -66,7 +66,7 @@ pub async fn network_worker(url: &str) {
                     }
                 }
                 Err(e) => {
-                    eprintln!("[!] Request failed: {}", e);
+                    eprintln!("[!] Request failed: {:#?}", e);
                     NETWORK_STATS.inc_errors();
                     tokio::time::sleep(Duration::from_millis(100)).await;
                 }
