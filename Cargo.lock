@@ -4530,6 +4530,8 @@ version = "0.1.0"
 dependencies = [
  "actix-web",
  "crossbeam-utils",
+ "http-body-util",
+ "hyper",
  "mimalloc",
  "num_cpus",
  "serde",

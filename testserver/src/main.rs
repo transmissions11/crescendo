@@ -60,10 +60,6 @@ async fn main() -> std::io::Result<()> {
     println!("Tokio worker threads: 512, Actix workers: 50");
 
     HttpServer::new(move || App::new().route("/", web::to(handler)))
-        .workers(50)  // Test with 50 workers
-        .max_connections(5_000_000)
-        .max_connection_rate(50_000)
-        .backlog(500_000)
         .bind("127.0.0.1:8545")?
         .run()
         .await

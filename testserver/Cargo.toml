@@ -12,3 +12,9 @@ mimalloc = "0.1.47"
 crossbeam-utils = "0.8.21"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+hyper = { version = "1", features = ["full"] }
+http-body-util = "0.1"
+
+[[bin]]
+name = "testserver-hyper"
+path = "src/main_hyper.rs"
