@@ -32,7 +32,7 @@ async fn handler(body: Json<JsonRpcRequest>) -> Result<HttpResponse> {
     if body.jsonrpc != "2.0" {
         return Ok(HttpResponse::BadRequest().body("Invalid jsonrpc version"));
     }
-    if body.method != "eth_getTransactionReceipt" {
+    if body.method != "eth_sendRawTransaction" {
         return Ok(HttpResponse::BadRequest().body("Invalid method"));
     }
     if body.params.len() != 1 {
