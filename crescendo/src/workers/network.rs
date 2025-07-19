@@ -35,42 +35,43 @@ pub async fn network_worker(url: &str) {
                 .body(Full::new(Bytes::from(json_body.into_bytes())))
                 .unwrap();
 
-            match client.request(req).await {
-                Ok(res) => {
-                    if res.status() == StatusCode::OK {
-                        // Decode and print the response body
-                        match res.into_body().collect().await {
-                            Ok(collected) => {
-                                let body_bytes = collected.to_bytes();
-                                let body_str = std::str::from_utf8(&body_bytes).unwrap();
+            // Spawn the request handling asynchronously to avoid waiting for response
+            let client_clone = client.clone();
+            tokio::spawn(async move {
+                match client_clone.request(req).await {
+                    Ok(res) => {
+                        if res.status() == StatusCode::OK {
+                            // Decode and check the response body
+                            match res.into_body().collect().await {
+                                Ok(collected) => {
+                                    let body_bytes = collected.to_bytes();
+                                    let body_str = std::str::from_utf8(&body_bytes).unwrap();
 
-                                if body_str.contains("\"error\":") {
-                                    println!("[!] RPC  response: {}", body_str);
-                                    NETWORK_STATS.inc_errors();
-                                    tokio::time::sleep(Duration::from_millis(100)).await;
-                                    continue;
+                                    if body_str.contains("\"error\":") {
+                                        println!("[!] RPC  response: {}", body_str);
+                                        NETWORK_STATS.inc_errors();
+                                    } else {
+                                        NETWORK_STATS.inc_requests();
+                                    }
                                 }
-
-                                NETWORK_STATS.inc_requests();
+                                Err(e) => {
+                                    eprintln!("[!] Failed to read response body: {:?}", e);
+                                    NETWORK_STATS.inc_errors();
+                                }
                             }
-                            Err(e) => {
-                                eprintln!("[!] Failed to read response body: {:?}", e);
-                                NETWORK_STATS.inc_errors();
-                                tokio::time::sleep(Duration::from_millis(100)).await;
-                            }
+                        } else {
+                            println!("[!] Request did not have OK status: {:?}", res);
+                            NETWORK_STATS.inc_errors();
                         }
-                    } else {
-                        println!("[!] Request did not have OK status: {:?}", res);
+                    }
+                    Err(e) => {
+                        eprintln!("[!] Request failed: {:?}", e);
                         NETWORK_STATS.inc_errors();
-                        tokio::time::sleep(Duration::from_millis(100)).await;
                     }
                 }
-                Err(e) => {
-                    eprintln!("[!] Request failed: {:?}", e);
-                    NETWORK_STATS.inc_errors();
-                    tokio::time::sleep(Duration::from_millis(100)).await;
-                }
-            }
+            });
+
+            // tokio::time::sleep(Duration::from_millis(1)).await; // Sleep for a bit to avoid overwhelming the server.
         } else {
             // Sleep for a bit while the tx queue repopulates.
             tokio::time::sleep(Duration::from_millis(100)).await;
