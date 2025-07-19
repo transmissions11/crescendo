@@ -37,8 +37,11 @@ async fn main() {
     utils::maybe_pin_thread(core_ids.pop().unwrap(), THREAD_PINNING);
 
     // Given our desired breakdown of workers, translate this into actual numbers of workers to spawn.
-    let (workers, worker_counts) =
-        workers::assign_workers(core_ids, vec![(WorkerType::TxGen, 0.25), (WorkerType::Network, 0.75)]);
+    let (workers, worker_counts) = workers::assign_workers(
+        core_ids, // Doesn't include the main runtime core.
+        vec![(WorkerType::TxGen, 0.25), (WorkerType::Network, 0.75)],
+        THREAD_PINNING, // Only log core ranges if thread pinning is actually enabled.
+    );
 
     let connections_per_network_worker = TOTAL_CONNECTIONS / worker_counts[&WorkerType::Network];
     println!("[*] Connections per network worker: {}", connections_per_network_worker);
@@ -47,14 +50,12 @@ async fn main() {
     for (core_id, worker_type) in workers {
         match worker_type {
             WorkerType::TxGen => {
-                println!("[TEMP] Spawning tx gen worker on core {}", core_id.id);
                 thread::spawn(move || {
                     utils::maybe_pin_thread(core_id, THREAD_PINNING);
                     workers::tx_gen_worker();
                 });
             }
             WorkerType::Network => {
-                println!("[TEMP] Spawning network worker on core {}", core_id.id);
                 thread::spawn(move || {
                     utils::maybe_pin_thread(core_id, THREAD_PINNING);
                     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();

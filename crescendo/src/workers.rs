@@ -21,9 +21,11 @@ pub enum WorkerType {
 pub fn assign_workers(
     mut core_ids: Vec<CoreId>,
     assignments: Vec<(WorkerType, f64)>,
+    log_core_ranges: bool,
 ) -> (Vec<(core_affinity::CoreId, WorkerType)>, HashMap<WorkerType, u64>) {
     let mut result = Vec::new();
     let mut worker_counts: HashMap<WorkerType, u64> = HashMap::new();
+    let mut worker_cores: HashMap<WorkerType, Vec<CoreId>> = HashMap::new();
 
     let total_starting_cores = core_ids.len();
 
@@ -34,6 +36,7 @@ pub fn assign_workers(
             if let Some(core_id) = core_ids.pop() {
                 result.push((core_id, *worker_type));
                 *worker_counts.entry(*worker_type).or_insert(0) += 1;
+                worker_cores.entry(*worker_type).or_insert_with(Vec::new).push(core_id);
                 remaining_cores -= 1;
             }
         }
@@ -50,6 +53,7 @@ pub fn assign_workers(
             if let Some(core_id) = core_ids.pop() {
                 result.push((core_id, worker_type));
                 *worker_counts.entry(worker_type).or_insert(0) += 1;
+                worker_cores.entry(worker_type).or_insert_with(Vec::new).push(core_id);
                 remaining_cores -= 1;
             }
         }
@@ -57,7 +61,19 @@ pub fn assign_workers(
 
     println!("[+] Spawning {} workers:", total_starting_cores);
     for (worker_type, count) in worker_counts.clone() {
-        println!("- {:?}: {}", worker_type, count);
+        if log_core_ranges {
+            if let Some(cores) = worker_cores.get(&worker_type) {
+                let core_ids: Vec<String> = cores.iter().map(|c| c.id.to_string()).collect();
+                let core_range = if cores.len() == 1 {
+                    format!("core {}", core_ids[0])
+                } else {
+                    format!("cores {}", core_ids.join(", "))
+                };
+                println!("- {:?}: {} ({})", worker_type, count, core_range);
+            }
+        } else {
+            println!("- {:?}: {}", worker_type, count);
+        }
     }
 
     (result, worker_counts)
