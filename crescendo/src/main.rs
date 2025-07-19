@@ -49,6 +49,8 @@ async fn main() {
     // TODO: Having the assign_workers function do this would be cleaner, also give ids to the network workers.
     let mut tx_gen_worker_id = 0;
 
+    println!("[*] Starting workers...");
+
     // Spawn the workers, pinning them to the appropriate cores if enabled.
     for (core_id, worker_type) in workers {
         match worker_type {
@@ -74,6 +76,8 @@ async fn main() {
             }
         }
     }
+
+    println!("[*] Starting reporters...");
 
     // Start reporters.
     tokio::spawn(TX_QUEUE.start_reporter(Duration::from_secs(3)));
