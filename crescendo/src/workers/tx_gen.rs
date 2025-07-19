@@ -14,10 +14,6 @@ const CHAIN_ID: u64 = 1337;
 pub fn tx_gen_worker(worker_id: u32) {
     let mut nonce = 0u64;
 
-    if nonce == 0 {
-        println!("[*] Worker {} starting nonce at 0.", worker_id);
-    }
-
     let signer = MnemonicBuilder::<English>::default()
         .phrase("test test test test test test test test test test test junk")
         .index(worker_id)
@@ -31,12 +27,15 @@ pub fn tx_gen_worker(worker_id: u32) {
             CHAIN_ID,
             nonce,
             100_000_000_000, // 100 gwei
-            100_000,
+            25_000,          // 25k gas limit
             Address::from([0; 20]),
             Bytes::new(),
         );
         TX_QUEUE.push_tx(tx);
         nonce += 1;
+        if nonce % 10000 == 0 {
+            println!("[*] TxGen worker {} submitted {} txs.", worker_id, nonce);
+        }
     }
 }
 
