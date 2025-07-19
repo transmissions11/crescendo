@@ -39,7 +39,7 @@ async fn main() {
     // Given our desired breakdown of workers, translate this into actual numbers of workers to spawn.
     let (workers, worker_counts) = workers::assign_workers(
         core_ids, // Doesn't include the main runtime core.
-        vec![(WorkerType::TxGen, 0.25), (WorkerType::Network, 0.75)],
+        vec![(WorkerType::TxGen, 0.0), (WorkerType::Network, 1.0)],
         THREAD_PINNING, // Only log core ranges if thread pinning is actually enabled.
     );
 
