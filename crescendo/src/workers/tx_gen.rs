@@ -1,4 +1,3 @@
-
 use alloy::network::TxSignerSync;
 use alloy::primitives::{Address, Bytes, TxKind, U256};
 use alloy_consensus::{SignableTransaction, TxLegacy};
@@ -31,9 +30,6 @@ pub fn tx_gen_worker(worker_id: u32) {
         );
         TX_QUEUE.push_tx(tx);
         nonce += 1;
-        if nonce % 10000 == 0 {
-            println!("[*] TxGen worker {} submitted {} txs.", worker_id, nonce);
-        }
     }
 }
 
