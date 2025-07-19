@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use alloy::primitives::{hex, Bytes};
 use http::StatusCode;
