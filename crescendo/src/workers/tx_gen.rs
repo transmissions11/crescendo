@@ -12,7 +12,7 @@ pub fn tx_gen_worker() {
 
     loop {
         let signer = PrivateKeySigner::random();
-        let tx = generate_and_sign_tx(&signer, CHAIN_ID, nonce, 0, 100_000, Address::from([0; 20]), Bytes::new());
+        let tx = generate_and_sign_tx(&signer, CHAIN_ID, 0, 0, 100_000, Address::from([0; 20]), Bytes::new());
         TX_QUEUE.push_tx(tx);
         nonce += 1;
     }
