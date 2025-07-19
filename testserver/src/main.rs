@@ -73,7 +73,7 @@ async fn main() -> std::io::Result<()> {
         }
     });
 
-    println!("Server listening on http://127.0.0.1:8080");
+    println!("Server listening on http://127.0.0.1:8545");
 
-    HttpServer::new(move || App::new().route("/", web::post().to(handler))).bind("127.0.0.1:8080")?.run().await
+    HttpServer::new(move || App::new().route("/", web::post().to(handler))).bind("127.0.0.1:8545")?.run().await
 }
