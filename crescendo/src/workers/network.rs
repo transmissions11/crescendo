@@ -7,6 +7,7 @@ use hyper::Request;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
+use thousands::Separable;
 
 use crate::network_stats::NETWORK_STATS;
 use crate::tx_queue::TX_QUEUE;
@@ -56,8 +57,10 @@ pub async fn network_worker(url: &str, worker_id: usize) {
                         let duration = start_time.elapsed();
                         let implied_total_rps = (1.0 / duration.as_secs_f64()) * (TOTAL_CONNECTIONS as f64);
                         println!(
-                            "[~] Worker {} request duration: {:?} ({:.2} implied total RPS)",
-                            worker_id, duration, implied_total_rps
+                            "[~] Worker {} request duration: {:?} ({} implied total RPS)",
+                            worker_id,
+                            duration,
+                            implied_total_rps.separate_with_commas()
                         );
                     }
 
