@@ -10,6 +10,7 @@ use hyper_util::rt::TokioExecutor;
 
 use crate::network_stats::NETWORK_STATS;
 use crate::tx_queue::TX_QUEUE;
+use crate::TOTAL_CONNECTIONS;
 
 const BATCH_FACTOR: usize = 1; // How many txs to send in a single request.
 
@@ -53,7 +54,11 @@ pub async fn network_worker(url: &str, worker_id: usize) {
                 Ok(res) => {
                     if worker_id == 0 {
                         let duration = start_time.elapsed();
-                        println!("[*] Worker {} request duration: {:?}", worker_id, duration);
+                        let implied_total_rps = (1.0 / duration.as_secs_f64()) * (TOTAL_CONNECTIONS as f64);
+                        println!(
+                            "[~] Worker {} request duration: {:?} ({:.2} implied total RPS)",
+                            worker_id, duration, implied_total_rps
+                        );
                     }
 
                     if res.status() == StatusCode::OK {
