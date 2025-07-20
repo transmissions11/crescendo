@@ -47,8 +47,9 @@ impl TxQueue {
             interval.tick().await;
             let current_total_added = self.total_added.load(Ordering::Relaxed);
             let current_queue_len = self.queue_len();
-            let added_per_second = current_total_added - last_total_added;
-            let queue_growth = current_queue_len.saturating_sub(last_queue_len);
+            let added_per_second = (current_total_added - last_total_added) / measurement_interval.as_secs();
+            let queue_growth =
+                ((current_queue_len.saturating_sub(last_queue_len)) as u64) / measurement_interval.as_secs();
             println!(
                 "[*] TxQueue +/s: {}, TxQueue Δ/s: {}, Current length: {}",
                 added_per_second.separate_with_commas(),
