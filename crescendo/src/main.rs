@@ -20,7 +20,7 @@ use crate::workers::{DesireType, WorkerType};
 static GLOBAL: MiMalloc = MiMalloc;
 
 // TODO: Configurable CLI args.
-const TOTAL_CONNECTIONS: u64 = 20_000; // This is limited by the amount of ephemeral ports available on the system.
+const TOTAL_CONNECTIONS: u64 = 50_000; // This is limited by the amount of ephemeral ports available on the system.
 const THREAD_PINNING: bool = true;
 const TARGET_URL: &str = "http://127.0.0.1:8545";
 
@@ -46,8 +46,11 @@ async fn main() {
     let connections_per_network_worker = TOTAL_CONNECTIONS / worker_counts[&WorkerType::Network];
     println!("[*] Connections per network worker: {}", connections_per_network_worker);
 
-    // TODO: Having the assign_workers function do this would be cleaner, also give ids to the network workers.
+    // TODO: Having the assign_workers function do this would be cleaner.
     let mut tx_gen_worker_id = 0;
+    let mut network_worker_id = 0;
+
+    println!("[*] Starting workers...");
 
     // Spawn the workers, pinning them to the appropriate cores if enabled.
     for (core_id, worker_type) in workers {
@@ -65,19 +68,25 @@ async fn main() {
                     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 
                     rt.block_on(async {
-                        for _ in 0..connections_per_network_worker {
-                            tokio::spawn(workers::network_worker(TARGET_URL));
+                        for i in 0..connections_per_network_worker {
+                            tokio::spawn(workers::network_worker(
+                                TARGET_URL,
+                                (network_worker_id * connections_per_network_worker + i) as usize,
+                            ));
                         }
                         pending::<()>().await; // Keep the runtime alive forever.
                     });
                 });
+                network_worker_id += 1;
             }
         }
     }
 
+    println!("[*] Starting reporters...");
+
     // Start reporters.
-    tokio::spawn(TX_QUEUE.start_reporter(Duration::from_secs(1)));
-    tokio::spawn(NETWORK_STATS.start_reporter(Duration::from_secs(1)))
+    tokio::spawn(TX_QUEUE.start_reporter(Duration::from_secs(3)));
+    tokio::spawn(NETWORK_STATS.start_reporter(Duration::from_secs(3)))
         .await // Keep the main thread alive forever.
         .unwrap();
 }

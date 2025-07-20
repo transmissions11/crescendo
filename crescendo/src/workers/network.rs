@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use alloy::primitives::{hex, Bytes};
 use http::StatusCode;
@@ -7,13 +7,15 @@ use hyper::Request;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
+use thousands::Separable;
 
 use crate::network_stats::NETWORK_STATS;
 use crate::tx_queue::TX_QUEUE;
+use crate::TOTAL_CONNECTIONS;
 
-const BATCH_FACTOR: usize = 10; // How many txs to send in a single request.
+const BATCH_FACTOR: usize = 1; // How many txs to send in a single request.
 
-pub async fn network_worker(url: &str) {
+pub async fn network_worker(url: &str, worker_id: usize) {
     let mut connector = HttpConnector::new();
     connector.set_nodelay(true);
     connector.set_keepalive(Some(Duration::from_secs(60)));
@@ -48,8 +50,20 @@ pub async fn network_worker(url: &str) {
                 .body(Full::new(Bytes::from(json_body.into_bytes())))
                 .unwrap();
 
+            let start_time = Instant::now();
             match client.request(req).await {
                 Ok(res) => {
+                    if worker_id == 0 {
+                        let duration = start_time.elapsed();
+                        let implied_total_rps = (1.0 / duration.as_secs_f64()) * (TOTAL_CONNECTIONS as f64);
+                        println!(
+                            "[~] Worker {} request duration: {:?} ({} implied total RPS)",
+                            worker_id,
+                            duration,
+                            (implied_total_rps as u64).separate_with_commas()
+                        );
+                    }
+
                     if res.status() == StatusCode::OK {
                         match res.into_body().collect().await {
                             Ok(collected) => {
