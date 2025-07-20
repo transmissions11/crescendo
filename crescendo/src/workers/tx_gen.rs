@@ -50,9 +50,9 @@ pub fn tx_gen_worker(_worker_id: u32) {
             &signer,
             CHAIN_ID,
             nonce,
-            100_000_000_000,        // 100 gwei
-            25_000,                 // 25k gas limit
-            Address::from([0; 20]), // TODO: Send to another randomly selected account (but in a different output set probalby)
+            100_000_000_000, // 100 gwei
+            25_000,          // 25k gas limit
+            Address::from(rng.gen::<[u8; 20]>()),
             Bytes::new(),
         );
         TX_QUEUE.push_tx(tx);
