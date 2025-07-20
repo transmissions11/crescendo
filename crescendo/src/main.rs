@@ -69,7 +69,10 @@ async fn main() {
 
                     rt.block_on(async {
                         for i in 0..connections_per_network_worker {
-                            tokio::spawn(workers::network_worker(TARGET_URL, (network_worker_id * i) as usize));
+                            tokio::spawn(workers::network_worker(
+                                TARGET_URL,
+                                (network_worker_id * connections_per_network_worker + i) as usize,
+                            ));
                         }
                         pending::<()>().await; // Keep the runtime alive forever.
                     });
