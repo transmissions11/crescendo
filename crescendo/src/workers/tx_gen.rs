@@ -11,7 +11,7 @@ use rand::Rng;
 use crate::tx_queue::TX_QUEUE;
 
 const CHAIN_ID: u64 = 1337;
-const NUM_ACCOUNTS: u32 = 100;
+const NUM_ACCOUNTS: u32 = 1000;
 
 // Static hashmap to track nonces for all accounts (0 to 9999)
 static NONCE_MAP: LazyLock<Arc<Mutex<HashMap<u32, u64>>>> = LazyLock::new(|| {
