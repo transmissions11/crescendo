@@ -11,7 +11,7 @@ use rand::Rng;
 use crate::tx_queue::TX_QUEUE;
 
 const CHAIN_ID: u64 = 1337;
-const NUM_ACCOUNTS: u32 = 1000;
+const NUM_ACCOUNTS: u32 = 2500;
 
 // Static hashmap to track nonces for all accounts (0 to 9999)
 static NONCE_MAP: LazyLock<Arc<Mutex<HashMap<u32, u64>>>> = LazyLock::new(|| {
@@ -50,9 +50,9 @@ pub fn tx_gen_worker(_worker_id: u32) {
             &signer,
             CHAIN_ID,
             nonce,
-            100_000_000_000, // 100 gwei
-            25_000,          // 25k gas limit
-            Address::from([0; 20]),
+            100_000_000_000,        // 100 gwei
+            25_000,                 // 25k gas limit
+            Address::from([0; 20]), // TODO: Send to another randomly selected account (but in a different output set probalby)
             Bytes::new(),
         );
         TX_QUEUE.push_tx(tx);
