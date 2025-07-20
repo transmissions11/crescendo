@@ -60,7 +60,7 @@ pub async fn network_worker(url: &str, worker_id: usize) {
                             "[~] Worker {} request duration: {:?} ({} implied total RPS)",
                             worker_id,
                             duration,
-                            implied_total_rps.separate_with_commas()
+                            (implied_total_rps as u64).separate_with_commas()
                         );
                     }
 
