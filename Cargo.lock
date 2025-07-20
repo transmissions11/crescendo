@@ -1498,6 +1498,7 @@ dependencies = [
  "hyper-util",
  "mimalloc",
  "num_cpus",
+ "rand 0.9.1",
  "rayon",
  "rlimit",
  "serde",
