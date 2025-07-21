@@ -33,6 +33,9 @@ async fn main() {
     let mut core_ids = core_affinity::get_core_ids().unwrap();
     println!("[*] Detected {} effective cores.", core_ids.len());
 
+    // Initialize Rayon with explicit thread count.
+    rayon::ThreadPoolBuilder::new().num_threads(core_ids.len()).build_global().unwrap();
+
     // Pin the tokio runtime to a core (if enabled).
     utils::maybe_pin_thread(core_ids.pop().unwrap(), THREAD_PINNING);
 
