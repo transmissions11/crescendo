@@ -54,8 +54,7 @@ impl TxQueue {
 
     pub async fn pop_at_most(&self, max_count: usize) -> Option<Vec<Vec<u8>>> {
         let mut queue = self.queue.lock().ok()?;
-        let max_count = queue.len().min(max_count);
-        let allowed = (0..max_count).take_while(|_| self.rate_limiter.try_wait().is_ok()).count();
+        let allowed = (0..queue.len().min(max_count)).take_while(|_| self.rate_limiter.try_wait().is_ok()).count();
         if allowed == 0 {
             return None;
         };

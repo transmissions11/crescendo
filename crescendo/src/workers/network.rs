@@ -98,7 +98,7 @@ pub async fn network_worker(url: &str, worker_id: usize) {
             }
         } else {
             // Sleep for a bit while the tx queue repopulates.
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(Duration::from_millis(25)).await;
         }
     }
 }
