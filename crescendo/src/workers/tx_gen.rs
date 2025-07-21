@@ -35,7 +35,7 @@ static SIGNER_LIST: LazyLock<Vec<PrivateKeySigner>> = LazyLock::new(|| {
         list.push(signer);
     }
     let duration = start.elapsed();
-    println!("[+] Initalized signer list of length {} in {:.0?}", NUM_ACCOUNTS, duration);
+    println!("[+] Initalized signer list of length {} in {:.1?}", NUM_ACCOUNTS, duration);
     list
 });
 
