@@ -6,8 +6,8 @@ use thousands::Separable;
 
 use crate::workers::NUM_ACCOUNTS;
 
-const RAMP_UP_SLEEP_DURATION: std::time::Duration = std::time::Duration::from_secs(30);
-const RAMP_UP_THRESHOLDS: [u64; 8] = [
+const RAMP_UP_MIN_SLEEP_DURATION: std::time::Duration = std::time::Duration::from_secs(1);
+const RAMP_UP_THRESHOLDS: [u64; 14] = [
     (NUM_ACCOUNTS / 100) as u64,
     (NUM_ACCOUNTS / 50) as u64,
     (NUM_ACCOUNTS / 25) as u64,
@@ -15,7 +15,13 @@ const RAMP_UP_THRESHOLDS: [u64; 8] = [
     (NUM_ACCOUNTS / 5) as u64,
     (NUM_ACCOUNTS / 3) as u64,
     (NUM_ACCOUNTS / 2) as u64,
-    (NUM_ACCOUNTS / 1) as u64,
+    (NUM_ACCOUNTS) as u64,
+    (NUM_ACCOUNTS * 2) as u64,
+    (NUM_ACCOUNTS * 5) as u64,
+    (NUM_ACCOUNTS * 10) as u64,
+    (NUM_ACCOUNTS * 20) as u64,
+    (NUM_ACCOUNTS * 100) as u64,
+    (NUM_ACCOUNTS * 1000) as u64,
 ];
 
 pub struct TxQueue {
@@ -66,15 +72,12 @@ impl TxQueue {
 
         // If we're going to cross a ramp-up threshold, sleep for a second.
         let prev_popped = self.total_popped.fetch_add(count, Ordering::Relaxed);
-        for &threshold in &RAMP_UP_THRESHOLDS {
+        for (i, &threshold) in RAMP_UP_THRESHOLDS.iter().enumerate() {
             if prev_popped < threshold && threshold <= (prev_popped + count) {
-                println!(
-                    "[-] Pausing popping for {:.1?} at {} txs.",
-                    RAMP_UP_SLEEP_DURATION,
-                    threshold.separate_with_commas()
-                );
+                let sleep_duration = RAMP_UP_BASE_SLEEP_DURATION * (i + 1) as u32; // Increase with each threshold.
+                println!("[-] Pausing popping for {:.1?} at {} txs.", sleep_duration, threshold.separate_with_commas());
                 self.popping_paused.store(true, Ordering::Relaxed); // Lock popping.
-                tokio::time::sleep(RAMP_UP_SLEEP_DURATION).await;
+                tokio::time::sleep(sleep_duration).await;
                 self.popping_paused.store(false, Ordering::Relaxed); // Unlock popping.
                 println!("[+] Resuming popping.");
                 break;
