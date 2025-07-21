@@ -27,4 +27,4 @@ reth node --http --http.addr 0.0.0.0 \
 --rpc.max-request-size 1000000 \
 --rpc.max-response-size 1000000 \
 --max-tx-reqs 1000000 \
---chain dev.json
+--chain genesis.json
