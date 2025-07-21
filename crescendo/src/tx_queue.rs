@@ -8,12 +8,13 @@ use thousands::Separable;
 
 use crate::workers::NUM_ACCOUNTS;
 
-const INITIAL_RATELIMIT: u64 = 500;
+const INITIAL_RATELIMIT: u64 = 250;
 #[rustfmt::skip]
-const RATELIMIT_THRESHOLDS: [(u32, u64); 5] = [
-    (NUM_ACCOUNTS / 4, 1_000),
-    (NUM_ACCOUNTS / 2, 2_500),
-    (NUM_ACCOUNTS,     5_000),
+const RATELIMIT_THRESHOLDS: [(u32, u64); 6] = [
+    (NUM_ACCOUNTS / 8,    500),
+    (NUM_ACCOUNTS / 4,  1_000),
+    (NUM_ACCOUNTS / 2,  2_500),
+    (NUM_ACCOUNTS,      5_000),
     (NUM_ACCOUNTS * 2, 10_000),
     (NUM_ACCOUNTS * 4, 25_000),
 ]; // Note: This must be sorted in ascending order of threshold!
