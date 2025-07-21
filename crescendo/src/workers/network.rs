@@ -55,7 +55,8 @@ pub async fn network_worker(url: &str, worker_id: usize) {
                 Ok(res) => {
                     if worker_id == 0 {
                         let duration = start_time.elapsed();
-                        let implied_total_rps = (1.0 / duration.as_secs_f64()) * (TOTAL_CONNECTIONS as f64);
+                        let implied_total_rps =
+                            (txs.len() as f64 / duration.as_secs_f64()) * (TOTAL_CONNECTIONS as f64);
                         println!(
                             "[~] Worker {} request duration: {:.1?} ({} implied total RPS)",
                             worker_id,
