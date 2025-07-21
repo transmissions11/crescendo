@@ -24,10 +24,10 @@ impl TxQueue {
     fn new() -> Self {
         // TODO: Configure bursting and other parameters?
         let rate_limiter = Ratelimiter::builder(
-            RATELIMIT_MAX,          // Refill amount.
+            RATELIMIT_MIN,          // Refill amount.
             Duration::from_secs(1), // Refill rate.
         )
-        .max_tokens(RATELIMIT_MIN) // Burst limit.
+        .max_tokens(RATELIMIT_MAX) // Burst limit.
         .build()
         .unwrap();
 
@@ -83,7 +83,7 @@ impl TxQueue {
 
             // If we've popped more than RATELIMIT_INCREASE_THRESHOLD txs, increase the rate limit to the max.
             if current_total_popped > RATELIMIT_INCREASE_THRESHOLD && self.rate_limiter.max_tokens() < RATELIMIT_MAX {
-                self.rate_limiter.set_max_tokens(RATELIMIT_MAX).unwrap();
+                self.rate_limiter.set_refill_amount(RATELIMIT_MAX).unwrap();
             }
 
             println!(
