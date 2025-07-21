@@ -26,7 +26,6 @@ static NONCE_MAP: LazyLock<Mutex<HashMap<u32, u64>>> = LazyLock::new(|| {
 
 static SIGNER_LIST: LazyLock<Vec<PrivateKeySigner>> = LazyLock::new(|| {
     let start = Instant::now();
-
     let list: Vec<PrivateKeySigner> = (0..NUM_ACCOUNTS)
         .into_par_iter()
         .map(|i| {
