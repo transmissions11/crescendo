@@ -73,16 +73,16 @@ impl TxQueue {
         interval.tick().await;
         loop {
             interval.tick().await;
-            let current_total_added = self.total_added.load(Ordering::Relaxed);
-            let current_total_popped = self.total_popped.load(Ordering::Relaxed);
+            let total_added = self.total_added.load(Ordering::Relaxed);
+            let total_popped = self.total_popped.load(Ordering::Relaxed);
             let current_queue_len = self.queue_len();
-            let added_per_second = (current_total_added - last_total_added) / measurement_interval.as_secs();
-            let popped_per_second = (current_total_popped - last_total_popped) / measurement_interval.as_secs();
+            let added_per_second = (total_added - last_total_added) / measurement_interval.as_secs();
+            let popped_per_second = (total_popped - last_total_popped) / measurement_interval.as_secs();
             let queue_growth =
                 ((current_queue_len.saturating_sub(last_queue_len)) as u64) / measurement_interval.as_secs();
 
             // If we've popped more than RATELIMIT_INCREASE_THRESHOLD txs, increase the rate limit to the max.
-            if current_total_popped > RATELIMIT_INCREASE_THRESHOLD && self.rate_limiter.max_tokens() < RATELIMIT_MAX {
+            if total_popped > RATELIMIT_INCREASE_THRESHOLD && self.rate_limiter.refill_amount() < RATELIMIT_MAX {
                 self.rate_limiter.set_refill_amount(RATELIMIT_MAX).unwrap();
             }
 
@@ -95,8 +95,8 @@ impl TxQueue {
                 self.rate_limiter.max_tokens().separate_with_commas()
             );
 
-            last_total_added = current_total_added;
-            last_total_popped = current_total_popped;
+            last_total_added = total_added;
+            last_total_popped = total_popped;
             last_queue_len = current_queue_len;
         }
     }
