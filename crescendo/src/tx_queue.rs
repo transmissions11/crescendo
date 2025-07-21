@@ -19,7 +19,6 @@ const RATELIMIT_THRESHOLDS: [(u32, u64); 9] = [
     (NUM_ACCOUNTS * 4, 10_000),
     (NUM_ACCOUNTS * 8, 25_000),
     (NUM_ACCOUNTS * 16, 35_000),
-    (NUM_ACCOUNTS * 32, 50_000),
 ]; // Note: This must be sorted in ascending order of threshold!
 
 pub struct TxQueue {
