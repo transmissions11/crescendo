@@ -41,35 +41,33 @@ impl TxQueue {
     }
 
     pub async fn pop_at_most(&self, max_count: usize) -> Option<Vec<Vec<u8>>> {
-        if self.popping_paused.load(Ordering::Relaxed) {
-            return None;
-        }
+        let (count, txs) = {
+            if self.popping_paused.load(Ordering::Relaxed) {
+                return None;
+            }
 
-        let mut queue = self.queue.lock().ok()?;
+            let mut queue = self.queue.lock().ok()?;
 
-        let count = max_count.min(queue.len());
-        if count == 0 {
-            return None;
-        }
+            let count = max_count.min(queue.len());
+            if count == 0 {
+                return None;
+            }
 
-        // TODO: Is drain more or less efficient than repeated pop_front?
-        // It's important to pop from the front here, otherwise the node
-        // gets confused seeing a bunch of txs with incredibly high nonces
-        // before it sees any of the lower ones. It's possible this issue
-        // could still emerge at high enough RPS, but haven't seen it yet.
-        let txs = queue.drain(..count).collect();
+            // TODO: Is drain more or less efficient than repeated pop_front?
+            // It's important to pop from the front here, otherwise the node
+            // gets confused seeing a bunch of txs with incredibly high nonces
+            // before it sees any of the lower ones. It's possible this issue
+            // could still emerge at high enough RPS, but haven't seen it yet.
+            (count as u64, queue.drain(..count).collect())
+        };
 
         // If we're going to cross a ramp-up threshold, sleep for a second.
-        let prev_popped = self.total_popped.fetch_add(count as u64, Ordering::Relaxed);
+        let prev_popped = self.total_popped.fetch_add(count, Ordering::Relaxed);
         for &threshold in &RAMP_UP_THRESHOLDS {
-            if prev_popped < threshold && threshold <= (prev_popped + count as u64) {
+            if prev_popped < threshold && threshold <= (prev_popped + count) {
                 self.popping_paused.store(true, Ordering::Relaxed); // Lock popping.
-
-                drop(queue); // Drop the lock before sleeping, so tx_gen workers can still append.
                 tokio::time::sleep(RAMP_UP_SLEEP_DURATION).await;
-
                 self.popping_paused.store(false, Ordering::Relaxed); // Unlock popping.
-
                 break;
             }
         }
