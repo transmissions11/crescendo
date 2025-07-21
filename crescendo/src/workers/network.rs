@@ -13,7 +13,7 @@ use crate::network_stats::NETWORK_STATS;
 use crate::tx_queue::TX_QUEUE;
 use crate::TOTAL_CONNECTIONS;
 
-const BATCH_FACTOR: usize = 1; // How many txs to send in a single request.
+const BATCH_FACTOR: usize = 5; // How many txs to send in a single request.
 
 pub async fn network_worker(url: &str, worker_id: usize) {
     let mut connector = HttpConnector::new();
