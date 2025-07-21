@@ -6,7 +6,11 @@ use std::time::Duration;
 use ratelimit::Ratelimiter;
 use thousands::Separable;
 
-const MAX_POP_PER_SECOND: u64 = 1_000;
+use crate::workers::NUM_ACCOUNTS;
+
+const RATELIMIT_MIN: u64 = 1_000;
+const RATELIMIT_MAX: u64 = 25_000;
+const RATELIMIT_INCREASE_THRESHOLD: u64 = NUM_ACCOUNTS as u64 * 2;
 
 pub struct TxQueue {
     // TODO: RwLock? Natively concurrent deque?
@@ -20,10 +24,10 @@ impl TxQueue {
     fn new() -> Self {
         // TODO: Configure bursting and other parameters?
         let rate_limiter = Ratelimiter::builder(
-            MAX_POP_PER_SECOND,     // Refill amount.
+            RATELIMIT_MAX,          // Refill amount.
             Duration::from_secs(1), // Refill rate.
         )
-        .max_tokens(MAX_POP_PER_SECOND) // Burst limit.
+        .max_tokens(RATELIMIT_MIN) // Burst limit.
         .build()
         .unwrap();
 
@@ -56,7 +60,7 @@ impl TxQueue {
             return None;
         };
 
-        self.total_popped.fetch_add(allowed as u64, Ordering::Relaxed);
+        let popped = self.total_popped.fetch_add(allowed as u64, Ordering::Relaxed);
 
         Some(queue.drain(..allowed).collect())
     }
@@ -77,13 +81,18 @@ impl TxQueue {
             let queue_growth =
                 ((current_queue_len.saturating_sub(last_queue_len)) as u64) / measurement_interval.as_secs();
 
+            // If we've popped more than RATELIMIT_INCREASE_THRESHOLD txs, increase the rate limit to the max.
+            if current_total_popped > RATELIMIT_INCREASE_THRESHOLD && self.rate_limiter.max_tokens() < RATELIMIT_MAX {
+                self.rate_limiter.set_max_tokens(RATELIMIT_MAX).unwrap();
+            }
+
             println!(
                 "[*] TxQueue +/s: {}, -/s: {}, Δ/s: {}, Length: {}, Rate limit: {}/s",
                 added_per_second.separate_with_commas(),
                 popped_per_second.separate_with_commas(),
                 queue_growth.separate_with_commas(),
                 current_queue_len.separate_with_commas(),
-                MAX_POP_PER_SECOND.separate_with_commas()
+                self.rate_limiter.max_tokens().separate_with_commas()
             );
 
             last_total_added = current_total_added;
