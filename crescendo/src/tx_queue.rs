@@ -8,9 +8,16 @@ use thousands::Separable;
 
 use crate::workers::NUM_ACCOUNTS;
 
-const RATELIMIT_MIN: u64 = 1_000;
-const RATELIMIT_MAX: u64 = 25_000;
-const RATELIMIT_INCREASE_THRESHOLD: u64 = NUM_ACCOUNTS as u64 * 2;
+const RATELIMIT_MIN: u64 = 500;
+#[rustfmt::skip]
+const RATELIMIT_THRESHOLDS: [(u32, u64); 5] = [
+    // Note: This must be sorted in ascending order of threshold!
+    (NUM_ACCOUNTS / 4, 1_000),
+    (NUM_ACCOUNTS / 2, 2_500),
+    (NUM_ACCOUNTS,     5_000),
+    (NUM_ACCOUNTS * 2, 10_000),
+    (NUM_ACCOUNTS * 4, 25_000),
+];
 
 pub struct TxQueue {
     // TODO: RwLock? Natively concurrent deque?
@@ -22,12 +29,12 @@ pub struct TxQueue {
 
 impl TxQueue {
     fn new() -> Self {
-        // TODO: Configure bursting and other parameters?
+        // Modulates rate at which txs can be popped from the queue.
         let rate_limiter = Ratelimiter::builder(
             RATELIMIT_MIN,          // Refill amount.
             Duration::from_secs(1), // Refill rate.
         )
-        .max_tokens(RATELIMIT_MAX) // Burst limit.
+        .max_tokens(RATELIMIT_MIN) // Burst limit.
         .build()
         .unwrap();
 
@@ -80,9 +87,17 @@ impl TxQueue {
             let queue_growth =
                 ((current_queue_len.saturating_sub(last_queue_len)) as u64) / measurement_interval.as_secs();
 
-            // If we've popped more than RATELIMIT_INCREASE_THRESHOLD txs, increase the rate limit to the max.
-            if total_popped > RATELIMIT_INCREASE_THRESHOLD && self.rate_limiter.refill_amount() < RATELIMIT_MAX {
-                self.rate_limiter.set_refill_amount(RATELIMIT_MAX).unwrap();
+            // Adjust rate limit based on total popped transactions and thresholds.
+            let new_rate_limit = RATELIMIT_THRESHOLDS
+                .iter()
+                .rev()
+                .find(|(threshold, _)| total_popped >= (*threshold as u64))
+                .map(|(_, rate_limit)| *rate_limit)
+                .unwrap_or(RATELIMIT_MIN);
+            if self.rate_limiter.refill_amount() != new_rate_limit {
+                println!("[+] Adjusting rate limit to {} txs/s", new_rate_limit.separate_with_commas());
+                self.rate_limiter.set_refill_amount(new_rate_limit).unwrap();
+                self.rate_limiter.set_max_tokens(new_rate_limit).unwrap();
             }
 
             println!(
@@ -91,7 +106,7 @@ impl TxQueue {
                 popped_per_second.separate_with_commas(),
                 queue_growth.separate_with_commas(),
                 current_queue_len.separate_with_commas(),
-                self.rate_limiter.max_tokens().separate_with_commas()
+                self.rate_limiter.refill_amount().separate_with_commas()
             );
 
             last_total_added = total_added;
