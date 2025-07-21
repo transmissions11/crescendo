@@ -8,7 +8,7 @@ use thousands::Separable;
 
 use crate::workers::NUM_ACCOUNTS;
 
-const RATELIMIT_MIN: u64 = 500;
+const INITIAL_RATELIMIT: u64 = 500;
 #[rustfmt::skip]
 const RATELIMIT_THRESHOLDS: [(u32, u64); 5] = [
     // Note: This must be sorted in ascending order of threshold!
@@ -31,10 +31,10 @@ impl TxQueue {
     fn new() -> Self {
         // Modulates rate at which txs can be popped from the queue.
         let rate_limiter = Ratelimiter::builder(
-            RATELIMIT_MIN,          // Refill amount.
+            INITIAL_RATELIMIT,      // Refill amount.
             Duration::from_secs(1), // Refill rate.
         )
-        .max_tokens(RATELIMIT_MIN) // Burst limit.
+        .max_tokens(INITIAL_RATELIMIT) // Burst limit.
         .build()
         .unwrap();
 
@@ -93,7 +93,7 @@ impl TxQueue {
                 .rev()
                 .find(|(threshold, _)| total_popped >= (*threshold as u64))
                 .map(|(_, rate_limit)| *rate_limit)
-                .unwrap_or(RATELIMIT_MIN);
+                .unwrap_or(INITIAL_RATELIMIT);
             if self.rate_limiter.refill_amount() != new_rate_limit {
                 println!("[+] Adjusting rate limit to {} txs/s", new_rate_limit.separate_with_commas());
                 self.rate_limiter.set_refill_amount(new_rate_limit).unwrap();
