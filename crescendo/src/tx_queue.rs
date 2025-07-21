@@ -11,13 +11,12 @@ use crate::workers::NUM_ACCOUNTS;
 const INITIAL_RATELIMIT: u64 = 500;
 #[rustfmt::skip]
 const RATELIMIT_THRESHOLDS: [(u32, u64); 5] = [
-    // Note: This must be sorted in ascending order of threshold!
     (NUM_ACCOUNTS / 4, 1_000),
     (NUM_ACCOUNTS / 2, 2_500),
     (NUM_ACCOUNTS,     5_000),
     (NUM_ACCOUNTS * 2, 10_000),
     (NUM_ACCOUNTS * 4, 25_000),
-];
+]; // Note: This must be sorted in ascending order of threshold!
 
 pub struct TxQueue {
     // TODO: RwLock? Natively concurrent deque?
