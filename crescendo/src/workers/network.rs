@@ -27,7 +27,7 @@ pub async fn network_worker(url: &str, worker_id: usize) {
         .build(connector);
 
     loop {
-        if let Some(txs) = TX_QUEUE.pop_at_most(BATCH_FACTOR) {
+        if let Some(txs) = TX_QUEUE.pop_at_most(BATCH_FACTOR).await {
             let json_body = format!(
                 "[{}]",
                 txs.iter()

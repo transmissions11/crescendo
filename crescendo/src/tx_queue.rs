@@ -1,16 +1,34 @@
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 
 use thousands::Separable;
+
+use crate::workers::NUM_ACCOUNTS;
+
+const RAMP_UP_SLEEP_DURATION: std::time::Duration = std::time::Duration::from_secs(1);
+const RAMP_UP_THRESHOLDS: [u64; 5] = [
+    (NUM_ACCOUNTS / 100) as u64,
+    (NUM_ACCOUNTS / 10) as u64,
+    (NUM_ACCOUNTS / 3) as u64,
+    (NUM_ACCOUNTS / 2) as u64,
+    (NUM_ACCOUNTS / 1) as u64,
+];
 
 pub struct TxQueue {
     // TODO: RwLock? Natively concurrent deque?
     queue: Mutex<VecDeque<Vec<u8>>>,
     total_added: AtomicU64,
+    total_popped: AtomicU64,
+    popping_paused: AtomicBool,
 }
 
-pub static TX_QUEUE: TxQueue = TxQueue { queue: Mutex::new(VecDeque::new()), total_added: AtomicU64::new(0) };
+pub static TX_QUEUE: TxQueue = TxQueue {
+    queue: Mutex::new(VecDeque::new()),
+    total_added: AtomicU64::new(0),
+    total_popped: AtomicU64::new(0),
+    popping_paused: AtomicBool::new(false),
+};
 
 impl TxQueue {
     pub fn push_tx(&self, tx: Vec<u8>) {
@@ -22,7 +40,11 @@ impl TxQueue {
         self.queue.lock().map(|q| q.len()).unwrap_or(0)
     }
 
-    pub fn pop_at_most(&self, max_count: usize) -> Option<Vec<Vec<u8>>> {
+    pub async fn pop_at_most(&self, max_count: usize) -> Option<Vec<Vec<u8>>> {
+        if self.popping_paused.load(Ordering::Relaxed) {
+            return None;
+        }
+
         let mut queue = self.queue.lock().ok()?;
 
         let count = max_count.min(queue.len());
@@ -35,7 +57,24 @@ impl TxQueue {
         // gets confused seeing a bunch of txs with incredibly high nonces
         // before it sees any of the lower ones. It's possible this issue
         // could still emerge at high enough RPS, but haven't seen it yet.
-        Some(queue.drain(..count).collect())
+        let txs = queue.drain(..count).collect();
+
+        // If we're going to cross a ramp-up threshold, sleep for a second.
+        let prev_popped = self.total_popped.fetch_add(count as u64, Ordering::Relaxed);
+        for &threshold in &RAMP_UP_THRESHOLDS {
+            if prev_popped < threshold && threshold <= (prev_popped + count as u64) {
+                self.popping_paused.store(true, Ordering::Relaxed); // Lock popping.
+
+                drop(queue); // Drop the lock before sleeping, so tx_gen workers can still append.
+                tokio::time::sleep(RAMP_UP_SLEEP_DURATION).await;
+
+                self.popping_paused.store(false, Ordering::Relaxed); // Unlock popping.
+
+                break;
+            }
+        }
+
+        Some(txs)
     }
 
     pub async fn start_reporter(&self, measurement_interval: std::time::Duration) {

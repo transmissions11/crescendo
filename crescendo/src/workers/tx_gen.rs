@@ -11,8 +11,8 @@ use rand::Rng;
 
 use crate::tx_queue::TX_QUEUE;
 
-const CHAIN_ID: u64 = 1337;
-const NUM_ACCOUNTS: u32 = 10000; // Limited by the number in the genesis (see bin/generate_genesis_alloc.rs)
+pub const CHAIN_ID: u64 = 1337;
+pub const NUM_ACCOUNTS: u32 = 10000; // Limited by the number in the genesis (see bin/generate_genesis_alloc.rs)
 
 static NONCE_MAP: LazyLock<Mutex<HashMap<u32, u64>>> = LazyLock::new(|| {
     let mut map = HashMap::with_capacity(NUM_ACCOUNTS as usize);
