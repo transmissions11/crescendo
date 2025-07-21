@@ -8,7 +8,6 @@ use alloy_consensus::{SignableTransaction, TxLegacy};
 use alloy_signer_local::coins_bip39::English;
 use alloy_signer_local::{MnemonicBuilder, PrivateKeySigner};
 use rand::Rng;
-use rayon::prelude::*;
 
 use crate::tx_queue::TX_QUEUE;
 
@@ -25,19 +24,18 @@ static NONCE_MAP: LazyLock<Mutex<HashMap<u32, u64>>> = LazyLock::new(|| {
 
 static SIGNER_LIST: LazyLock<Vec<PrivateKeySigner>> = LazyLock::new(|| {
     let start = Instant::now();
-    let list: Vec<PrivateKeySigner> = (0..NUM_ACCOUNTS)
-        .into_par_iter()
-        .map(|i| {
-            MnemonicBuilder::<English>::default()
-                .phrase("test test test test test test test test test test test junk")
-                .index(i)
-                .unwrap()
-                .build()
-                .unwrap()
-        })
-        .collect();
+    let mut list = Vec::with_capacity(NUM_ACCOUNTS as usize);
+    for i in 0..NUM_ACCOUNTS {
+        let signer = MnemonicBuilder::<English>::default()
+            .phrase("test test test test test test test test test test test junk")
+            .index(i)
+            .unwrap()
+            .build()
+            .unwrap();
+        list.push(signer);
+    }
     let duration = start.elapsed();
-    println!("[+] Initalized signer list of length {} in {:?}", NUM_ACCOUNTS, duration);
+    println!("[+] Initalized signer list of length {} in {:.0?}", NUM_ACCOUNTS, duration);
     list
 });
 
