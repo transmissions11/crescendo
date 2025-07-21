@@ -9,6 +9,7 @@ use alloy_signer_local::coins_bip39::English;
 use alloy_signer_local::{MnemonicBuilder, PrivateKeySigner};
 use rand::Rng;
 use rayon::prelude::*;
+use thousands::Separable;
 
 use crate::tx_queue::TX_QUEUE;
 
@@ -37,7 +38,7 @@ static SIGNER_LIST: LazyLock<Vec<PrivateKeySigner>> = LazyLock::new(|| {
         })
         .collect();
     let duration = start.elapsed();
-    println!("[+] Initalized signer list of length {} in {:.1?}", NUM_ACCOUNTS, duration);
+    println!("[+] Initalized signer list of length {} in {:.1?}", NUM_ACCOUNTS.separate_with_commas(), duration);
     list
 });
 
