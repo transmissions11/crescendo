@@ -1319,6 +1319,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "clocksource"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "129026dd5a8a9592d96916258f3a5379589e513ea5e86aeb0bd2530286e44e9e"
+dependencies = [
+ "libc",
+ "time",
+ "winapi",
+]
+
+[[package]]
 name = "coins-bip32"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1499,6 +1510,7 @@ dependencies = [
  "mimalloc",
  "num_cpus",
  "rand 0.9.1",
+ "ratelimit",
  "rayon",
  "rlimit",
  "serde",
@@ -3360,6 +3372,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "513962919efc330f829edb2535844d1b912b0fbe2ca165d613e4e8788bb05a5a"
 dependencies = [
  "rand_core 0.9.3",
+]
+
+[[package]]
+name = "ratelimit"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36ea961700fd7260e7fa3701c8287d901b2172c51f9c1421fa0f21d7f7e184b7"
+dependencies = [
+ "clocksource",
+ "parking_lot",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
