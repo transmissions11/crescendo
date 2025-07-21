@@ -96,8 +96,8 @@ impl TxQueue {
                 .unwrap_or(INITIAL_RATELIMIT);
             if self.rate_limiter.refill_amount() != new_rate_limit {
                 println!("[+] Adjusting rate limit to {} txs/s", new_rate_limit.separate_with_commas());
+                self.rate_limiter.set_max_tokens(new_rate_limit).unwrap(); // Burst limit must be set first.
                 self.rate_limiter.set_refill_amount(new_rate_limit).unwrap();
-                self.rate_limiter.set_max_tokens(new_rate_limit).unwrap();
             }
 
             println!(
