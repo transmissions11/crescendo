@@ -74,7 +74,7 @@ impl TxQueue {
         let prev_popped = self.total_popped.fetch_add(count, Ordering::Relaxed);
         for (i, &threshold) in RAMP_UP_THRESHOLDS.iter().enumerate() {
             if prev_popped < threshold && threshold <= (prev_popped + count) {
-                let sleep_duration = RAMP_UP_BASE_SLEEP_DURATION * (i + 1) as u32; // Increase with each threshold.
+                let sleep_duration = RAMP_UP_MIN_SLEEP_DURATION * (i + 1) as u32; // Increase with each threshold.
                 println!("[-] Pausing popping for {:.1?} at {} txs.", sleep_duration, threshold.separate_with_commas());
                 self.popping_paused.store(true, Ordering::Relaxed); // Lock popping.
                 tokio::time::sleep(sleep_duration).await;
