@@ -60,7 +60,7 @@ impl TxQueue {
             return None;
         };
 
-        let popped = self.total_popped.fetch_add(allowed as u64, Ordering::Relaxed);
+        self.total_popped.fetch_add(allowed as u64, Ordering::Relaxed);
 
         Some(queue.drain(..allowed).collect())
     }
