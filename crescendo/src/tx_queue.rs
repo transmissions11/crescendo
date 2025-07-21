@@ -19,7 +19,13 @@ pub struct TxQueue {
 impl TxQueue {
     fn new() -> Self {
         // TODO: Configure bursting and other parameters?
-        let rate_limiter = Ratelimiter::builder(MAX_POP_PER_SECOND, Duration::from_secs(1)).build().unwrap();
+        let rate_limiter = Ratelimiter::builder(
+            MAX_POP_PER_SECOND,     // Refill amount.
+            Duration::from_secs(1), // Refill rate.
+        )
+        .max_tokens(MAX_POP_PER_SECOND) // Burst limit.
+        .build()
+        .unwrap();
 
         Self {
             queue: Mutex::new(VecDeque::new()),
