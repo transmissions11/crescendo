@@ -26,11 +26,11 @@ static NONCE_MAP: LazyLock<Mutex<HashMap<u32, u64>>> = LazyLock::new(|| {
 
 static SIGNER_LIST: LazyLock<Vec<PrivateKeySigner>> = LazyLock::new(|| {
     let start = Instant::now();
-    
+
     // Check current thread pool size
-    let pool = rayon::current_thread_pool();
-    println!("[*] Rayon thread pool size: {} threads", pool.current_num_threads());
-    
+    let num_threads = rayon::current_num_threads();
+    println!("[*] Rayon using {} threads", num_threads);
+
     let list: Vec<PrivateKeySigner> = (0..NUM_ACCOUNTS)
         .into_par_iter()
         .map(|i| {
