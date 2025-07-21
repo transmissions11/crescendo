@@ -16,6 +16,7 @@ pub enum WorkerType {
     Network,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub enum DesireType {
     Exact(u64),
