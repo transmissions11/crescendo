@@ -10,7 +10,7 @@ use crate::workers::NUM_ACCOUNTS;
 
 const INITIAL_RATELIMIT: u64 = 250;
 #[rustfmt::skip]
-const RATELIMIT_THRESHOLDS: [(u32, u64); 9] = [
+const RATELIMIT_THRESHOLDS: [(u32, u64); 8] = [
     (NUM_ACCOUNTS / 8,    500),
     (NUM_ACCOUNTS / 4,    750),
     (NUM_ACCOUNTS / 2,  1_000),
