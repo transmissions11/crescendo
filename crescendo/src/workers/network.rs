@@ -27,7 +27,7 @@ pub async fn network_worker(url: &str, worker_id: usize) {
         .build(connector);
 
     loop {
-        if let Some(txs) = TX_QUEUE.pop_at_most(BATCH_FACTOR) {
+        if let Some(txs) = TX_QUEUE.pop_at_most(BATCH_FACTOR).await {
             let json_body = format!(
                 "[{}]",
                 txs.iter()
@@ -55,9 +55,10 @@ pub async fn network_worker(url: &str, worker_id: usize) {
                 Ok(res) => {
                     if worker_id == 0 {
                         let duration = start_time.elapsed();
-                        let implied_total_rps = (1.0 / duration.as_secs_f64()) * (TOTAL_CONNECTIONS as f64);
+                        let implied_total_rps =
+                            (txs.len() as f64 / duration.as_secs_f64()) * (TOTAL_CONNECTIONS as f64);
                         println!(
-                            "[~] Worker {} request duration: {:?} ({} implied total RPS)",
+                            "[~] Worker {} request duration: {:.1?} ({} implied total RPS)",
                             worker_id,
                             duration,
                             (implied_total_rps as u64).separate_with_commas()
@@ -98,7 +99,7 @@ pub async fn network_worker(url: &str, worker_id: usize) {
             }
         } else {
             // Sleep for a bit while the tx queue repopulates.
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(Duration::from_millis(25)).await;
         }
     }
 }

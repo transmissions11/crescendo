@@ -20,3 +20,10 @@ alloy-evm = "0.13"
 alloy-consensus = { version = "1", features = ["secp256k1"] }
 alloy-signer-local = { version = "1", features = ["mnemonic"] }
 core_affinity = "0.8.3"
+rayon = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+hex = "0.4"
+simple-tqdm = { version = "0.2.0", features = ["rayon"] }
+rand = "0.9.1"
+ratelimit = "0.10"

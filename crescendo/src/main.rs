@@ -20,7 +20,7 @@ use crate::workers::{DesireType, WorkerType};
 static GLOBAL: MiMalloc = MiMalloc;
 
 // TODO: Configurable CLI args.
-const TOTAL_CONNECTIONS: u64 = 50_000; // This is limited by the amount of ephemeral ports available on the system.
+const TOTAL_CONNECTIONS: u64 = 10_000; // This is limited by the amount of ephemeral ports available on the system.
 const THREAD_PINNING: bool = true;
 const TARGET_URL: &str = "http://127.0.0.1:8545";
 
@@ -33,13 +33,16 @@ async fn main() {
     let mut core_ids = core_affinity::get_core_ids().unwrap();
     println!("[*] Detected {} effective cores.", core_ids.len());
 
+    // Initialize Rayon with explicit thread count.
+    rayon::ThreadPoolBuilder::new().num_threads(core_ids.len()).build_global().unwrap();
+
     // Pin the tokio runtime to a core (if enabled).
     utils::maybe_pin_thread(core_ids.pop().unwrap(), THREAD_PINNING);
 
     // Given our desired breakdown of workers, translate this into actual numbers of workers to spawn.
     let (workers, worker_counts) = workers::assign_workers(
         core_ids, // Doesn't include the main runtime core.
-        vec![(WorkerType::TxGen, DesireType::Exact(20)), (WorkerType::Network, DesireType::Percentage(1.0))],
+        vec![(WorkerType::TxGen, DesireType::Percentage(0.1)), (WorkerType::Network, DesireType::Percentage(0.9))],
         THREAD_PINNING, // Only log core ranges if thread pinning is actually enabled.
     );
 
