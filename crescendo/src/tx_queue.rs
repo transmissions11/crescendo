@@ -6,24 +6,7 @@ use std::time::Duration;
 use ratelimit::Ratelimiter;
 use thousands::Separable;
 
-use crate::workers::NUM_ACCOUNTS;
-
-const INITIAL_RATELIMIT: u64 = 100;
-#[rustfmt::skip]
-const RATELIMIT_THRESHOLDS: [(u32, u64); 8] = [
-    (NUM_ACCOUNTS / 16,     250),
-    (NUM_ACCOUNTS / 8,      500),
-    (NUM_ACCOUNTS,        1_000),
-    (NUM_ACCOUNTS * 2,    2_500),
-    (NUM_ACCOUNTS * 4,    5_000),
-    // Avoid ramping up to max TPS before NUM_ACCOUNTS * ~5,
-    // as we want to make sure most storage slots have been
-    // touched + cached before we hit the max TPS. Why 5? See:
-    // https://grok.com/share/bGVnYWN5_e508360c-2313-4d31-8098-6d892f5bf1aa
-    (NUM_ACCOUNTS * 8,    7_500),
-    (NUM_ACCOUNTS * 10,  12_500),
-    (NUM_ACCOUNTS * 12,  15_000),
-]; // Note: This must be sorted in ascending order of threshold!
+use crate::config;
 
 pub struct TxQueue {
     // TODO: RwLock? Natively concurrent deque?
@@ -35,14 +18,12 @@ pub struct TxQueue {
 
 impl TxQueue {
     fn new() -> Self {
-        // Modulates rate at which txs can be popped from the queue.
-        let rate_limiter = Ratelimiter::builder(
-            INITIAL_RATELIMIT,      // Refill amount.
-            Duration::from_secs(1), // Refill rate.
-        )
-        .max_tokens(INITIAL_RATELIMIT) // Burst limit.
-        .build()
-        .unwrap();
+        let initial_ratelimit = config::get().rate_limiting.initial_ratelimit;
+
+        let rate_limiter = Ratelimiter::builder(initial_ratelimit, Duration::from_secs(1))
+            .max_tokens(initial_ratelimit)
+            .build()
+            .unwrap();
 
         Self {
             queue: Mutex::new(VecDeque::new()),
@@ -94,12 +75,15 @@ impl TxQueue {
                 ((current_queue_len.saturating_sub(last_queue_len)) as u64) / measurement_interval.as_secs();
 
             // Adjust rate limit based on total popped transactions and thresholds.
-            let new_rate_limit = RATELIMIT_THRESHOLDS
+            let rate_config = &config::get().rate_limiting;
+            let new_rate_limit = rate_config
+                .ratelimit_thresholds
                 .iter()
                 .rev()
                 .find(|(threshold, _)| total_popped >= (*threshold as u64))
                 .map(|(_, rate_limit)| *rate_limit)
-                .unwrap_or(INITIAL_RATELIMIT);
+                .unwrap_or(rate_config.initial_ratelimit);
+
             if self.rate_limiter.refill_amount() != new_rate_limit {
                 println!("[+] Adjusting rate limit to {} txs/s", new_rate_limit.separate_with_commas());
                 self.rate_limiter.set_max_tokens(new_rate_limit).unwrap(); // Burst limit must be set first.

@@ -3,7 +3,7 @@ use std::sync::{LazyLock, Mutex};
 use std::time::Instant;
 
 use alloy::network::TxSignerSync;
-use alloy::primitives::{address, TxKind, U256};
+use alloy::primitives::{Address, TxKind, U256};
 use alloy::sol;
 use alloy::sol_types::SolCall;
 use alloy_consensus::{SignableTransaction, TxLegacy};
@@ -13,14 +13,12 @@ use rand::Rng;
 use rayon::prelude::*;
 use thousands::Separable;
 
+use crate::config;
 use crate::tx_queue::TX_QUEUE;
 
-pub const CHAIN_ID: u64 = 1337;
-pub const NUM_ACCOUNTS: u32 = 25_000; // Limited by the number in the genesis (see bin/generate_genesis_alloc.rs)
-
 static NONCE_MAP: LazyLock<Mutex<HashMap<u32, u64>>> = LazyLock::new(|| {
-    let mut map = HashMap::with_capacity(NUM_ACCOUNTS as usize);
-    for i in 0..NUM_ACCOUNTS {
+    let mut map = HashMap::with_capacity(config::get().tx_gen_worker.num_accounts as usize);
+    for i in 0..config::get().tx_gen_worker.num_accounts {
         map.insert(i, 0);
     }
     Mutex::new(map)
@@ -28,19 +26,13 @@ static NONCE_MAP: LazyLock<Mutex<HashMap<u32, u64>>> = LazyLock::new(|| {
 
 static SIGNER_LIST: LazyLock<Vec<PrivateKeySigner>> = LazyLock::new(|| {
     let start = Instant::now();
-    let list: Vec<PrivateKeySigner> = (0..NUM_ACCOUNTS)
+    let config = &config::get().tx_gen_worker;
+    let list: Vec<PrivateKeySigner> = (0..config.num_accounts)
         .into_par_iter()
-        .map(|i| {
-            MnemonicBuilder::<English>::default()
-                .phrase("test test test test test test test test test test test junk")
-                .index(i)
-                .unwrap()
-                .build()
-                .unwrap()
-        })
+        .map(|i| MnemonicBuilder::<English>::default().phrase(&config.mnemonic).index(i).unwrap().build().unwrap())
         .collect();
     let duration = start.elapsed();
-    println!("[+] Initalized signer list of length {} in {:.1?}", NUM_ACCOUNTS.separate_with_commas(), duration);
+    println!("[+] Initalized signer list of length {} in {:.1?}", config.num_accounts.separate_with_commas(), duration);
     list
 });
 
@@ -54,7 +46,9 @@ pub fn tx_gen_worker(_worker_id: u32) {
     let mut rng = rand::rng();
 
     loop {
-        let account_index = rng.random_range(0..NUM_ACCOUNTS);
+        let config = &config::get().tx_gen_worker;
+
+        let account_index = rng.random_range(0..config.num_accounts); // Acount we'll be sending from.
 
         // Get and increment nonce atomically.
         let nonce = {
@@ -66,22 +60,25 @@ pub fn tx_gen_worker(_worker_id: u32) {
 
         let (signer, recipient) = (
             &SIGNER_LIST[account_index as usize],
-            // Send to 1/20th of the accounts, so recipients are pareto-principle distributed.
-            SIGNER_LIST[rng.random_range(0..(NUM_ACCOUNTS / 20)) as usize].address(),
+            SIGNER_LIST[rng.random_range(0..(config.num_accounts / config.recipient_distribution_factor)) as usize] // Send to 1/Nth of the accounts.
+                .address(),
         );
 
         let tx = sign_and_encode_tx(
             signer,
             TxLegacy {
-                chain_id: Some(CHAIN_ID),
+                chain_id: Some(config.chain_id),
                 nonce,
-                gas_price: 100_000_000_000, // 100 gwei
-                gas_limit: 100_000,         // 100k gas limit
-                to: TxKind::Call(address!("0x2000000000000000000000000000000000000001")),
+                gas_price: config.gas_price as u128,
+                gas_limit: config.gas_limit,
+                to: TxKind::Call(config.token_contract_address.parse::<Address>().unwrap()),
                 value: U256::ZERO,
-                input: ERC20::transferCall { to: recipient, amount: U256::from(rng.random_range(1..=10)) }
-                    .abi_encode()
-                    .into(),
+                input: ERC20::transferCall {
+                    to: recipient,
+                    amount: U256::from(rng.random_range(1..=config.max_transfer_amount)),
+                }
+                .abi_encode()
+                .into(),
             },
         );
 
