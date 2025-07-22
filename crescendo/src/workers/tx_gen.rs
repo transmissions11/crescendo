@@ -3,7 +3,9 @@ use std::sync::{LazyLock, Mutex};
 use std::time::Instant;
 
 use alloy::network::TxSignerSync;
-use alloy::primitives::{Bytes, TxKind, U256};
+use alloy::primitives::{address, TxKind, U256};
+use alloy::sol;
+use alloy::sol_types::SolCall;
 use alloy_consensus::{SignableTransaction, TxLegacy};
 use alloy_signer_local::coins_bip39::English;
 use alloy_signer_local::{MnemonicBuilder, PrivateKeySigner};
@@ -42,6 +44,12 @@ static SIGNER_LIST: LazyLock<Vec<PrivateKeySigner>> = LazyLock::new(|| {
     list
 });
 
+sol! {
+    interface ERC20 {
+        function transfer(address to, uint256 amount) external returns (bool);
+    }
+}
+
 pub fn tx_gen_worker(_worker_id: u32) {
     let mut rng = rand::rng();
 
@@ -68,10 +76,12 @@ pub fn tx_gen_worker(_worker_id: u32) {
                 chain_id: Some(CHAIN_ID),
                 nonce,
                 gas_price: 100_000_000_000, // 100 gwei
-                gas_limit: 25_000,          // 25k gas limit
-                to: TxKind::Call(recipient),
-                value: U256::from(rng.random_range(1..=10)),
-                input: Bytes::new(),
+                gas_limit: 100_000,         // 100k gas limit
+                to: TxKind::Call(address!("0x2000000000000000000000000000000000000001")),
+                value: U256::ZERO,
+                input: ERC20::transferCall { to: recipient, amount: U256::from(rng.random_range(1..=10)) }
+                    .abi_encode()
+                    .into(),
             },
         );
 
