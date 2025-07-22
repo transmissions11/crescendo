@@ -56,42 +56,27 @@ pub fn tx_gen_worker(_worker_id: u32) {
             current_nonce
         };
 
-        let signer = &SIGNER_LIST[account_index as usize];
-        let recipient = SIGNER_LIST[rng.random_range(0..NUM_ACCOUNTS) as usize].address();
-
-        let tx = generate_and_sign_tx(
-            &signer,
-            CHAIN_ID,
-            nonce,
-            100_000_000_000, // 100 gwei
-            25_000,          // 25k gas limit
-            recipient,
-            Bytes::new(),
+        let (signer, recipient) = (
+            &SIGNER_LIST[account_index as usize],
+            // Send to 1/20th of the accounts, so recipients are pareto-principle distributed.
+            SIGNER_LIST[rng.random_range(0..(NUM_ACCOUNTS / 20)) as usize].address(),
         );
+
+        let tx = sign_and_encode_tx(
+            signer,
+            TxLegacy {
+                chain_id: Some(CHAIN_ID),
+                nonce,
+                gas_price: 100_000_000_000, // 100 gwei
+                gas_limit: 25_000,          // 25k gas limit
+                to: TxKind::Call(recipient),
+                value: U256::from(rng.random_range(1..=10)),
+                input: Bytes::new(),
+            },
+        );
+
         TX_QUEUE.push_tx(tx);
     }
-}
-
-pub fn generate_and_sign_tx(
-    signer: &PrivateKeySigner,
-    chain_id: u64,
-    nonce: u64,
-    gas_price: u128,
-    gas_limit: u64,
-    to: Address,
-    data: Bytes,
-) -> Vec<u8> {
-    let tx = TxLegacy {
-        chain_id: Some(chain_id),
-        nonce,
-        gas_price,
-        gas_limit,
-        to: TxKind::Call(to),
-        value: U256::from(1),
-        input: data,
-    };
-
-    sign_and_encode_tx(signer, tx)
 }
 
 pub fn sign_and_encode_tx(signer: &PrivateKeySigner, mut tx: TxLegacy) -> Vec<u8> {
