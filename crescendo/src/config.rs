@@ -53,7 +53,7 @@ pub struct TxGenWorkerConfig {
     pub mnemonic: String,
     pub num_accounts: u32,
 
-    pub gas_price: u128,
+    pub gas_price: u64,
     pub gas_limit: u64,
 
     pub token_contract_address: String,

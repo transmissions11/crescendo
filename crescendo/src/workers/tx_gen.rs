@@ -69,7 +69,7 @@ pub fn tx_gen_worker(_worker_id: u32) {
             TxLegacy {
                 chain_id: Some(config.chain_id),
                 nonce,
-                gas_price: config.gas_price,
+                gas_price: config.gas_price as u128,
                 gas_limit: config.gas_limit,
                 to: TxKind::Call(config.token_contract_address.parse::<Address>().unwrap()),
                 value: U256::ZERO,
