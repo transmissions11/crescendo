@@ -3,7 +3,7 @@ use std::sync::{LazyLock, Mutex};
 use std::time::Instant;
 
 use alloy::network::TxSignerSync;
-use alloy::primitives::{Address, Bytes, TxKind, U256};
+use alloy::primitives::{Bytes, TxKind, U256};
 use alloy_consensus::{SignableTransaction, TxLegacy};
 use alloy_signer_local::coins_bip39::English;
 use alloy_signer_local::{MnemonicBuilder, PrivateKeySigner};
