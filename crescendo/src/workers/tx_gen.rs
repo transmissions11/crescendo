@@ -3,7 +3,7 @@ use std::sync::{LazyLock, Mutex};
 use std::time::Instant;
 
 use alloy::network::TxSignerSync;
-use alloy::primitives::{TxKind, U256};
+use alloy::primitives::{address, TxKind, U256};
 use alloy::sol;
 use alloy::sol_types::SolCall;
 use alloy_consensus::{SignableTransaction, TxLegacy};
@@ -77,7 +77,7 @@ pub fn tx_gen_worker(_worker_id: u32) {
                 nonce,
                 gas_price: 100_000_000_000, // 100 gwei
                 gas_limit: 100_000,         // 100k gas limit
-                to: TxKind::Call(recipient),
+                to: TxKind::Call(address!("0x2000000000000000000000000000000000000001")),
                 value: U256::ZERO,
                 input: ERC20::transferCall { to: recipient, amount: U256::from(rng.random_range(1..=10)) }
                     .abi_encode()
