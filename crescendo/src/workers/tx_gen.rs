@@ -77,7 +77,7 @@ pub fn tx_gen_worker(_worker_id: u32) {
                 nonce,
                 gas_price: 100_000_000_000, // 100 gwei
                 gas_limit: 100_000,         // 100k gas limit
-                to: TxKind::Call(address!("0x5FbDB2315678afecb367f032d93F642f64180aa3")),
+                to: TxKind::Call(address!("0x2000000000000000000000000000000000000001")),
                 value: U256::ZERO,
                 input: ERC20::transferCall { to: recipient, amount: U256::from(rng.random_range(1..=10)) }
                     .abi_encode()
