@@ -21,7 +21,7 @@ mnemonic = "test test test test test test test test test test test junk"
 recipient_distribution_factor = 20 # 1/20 of accounts receive transfers.
 max_transfer_amount = 10
 
-[rate_limiter]
+[rate_limiting]
 initial_ratelimit = 100 # txs/s
 
 # Rate limit thresholds: [(threshold, rate_limit)]
