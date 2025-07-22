@@ -3,7 +3,7 @@ use std::sync::{LazyLock, Mutex};
 use std::time::Instant;
 
 use alloy::network::TxSignerSync;
-use alloy::primitives::{Bytes, TxKind, U256};
+use alloy::primitives::{TxKind, U256};
 use alloy::sol;
 use alloy::sol_types::SolCall;
 use alloy_consensus::{SignableTransaction, TxLegacy};
