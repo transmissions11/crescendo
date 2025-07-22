@@ -16,6 +16,10 @@ const RATELIMIT_THRESHOLDS: [(u32, u64); 8] = [
     (NUM_ACCOUNTS,        1_000),
     (NUM_ACCOUNTS * 2,    2_500),
     (NUM_ACCOUNTS * 4,    5_000),
+    // Avoid ramping up to max TPS before NUM_ACCOUNTS * ~5,
+    // as we want to make sure most storage slots have been
+    // touched + cached before we hit the max TPS. Why 5? See:
+    // https://grok.com/share/bGVnYWN5_e508360c-2313-4d31-8098-6d892f5bf1aa
     (NUM_ACCOUNTS * 8,    7_500),
     (NUM_ACCOUNTS * 10,  12_500),
     (NUM_ACCOUNTS * 12,  15_000),
