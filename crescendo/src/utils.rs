@@ -3,6 +3,8 @@ use std::io;
 use core_affinity::CoreId;
 use rlimit::Resource;
 
+use crate::config;
+
 /// Increase the file descriptor limit to the given minimum.
 ///
 /// Panics if the hard limit is too low, otherwise tries to increase.
@@ -26,8 +28,8 @@ pub fn increase_nofile_limit(min_limit: u64) -> io::Result<u64> {
 /// Pin the current thread to the given core ID if enabled.
 ///
 /// Panics if the thread fails to pin.
-pub fn maybe_pin_thread(core_id: CoreId, enable_thread_pinning: bool) {
-    if !enable_thread_pinning {
+pub fn maybe_pin_thread(core_id: CoreId) {
+    if !config::get().workers.thread_pinning {
         return;
     }
 

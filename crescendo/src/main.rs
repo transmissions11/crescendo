@@ -1,15 +1,19 @@
 use std::future::pending;
+use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
 
+use clap::Parser;
 use core_affinity;
 use mimalloc::MiMalloc;
 
+mod config;
 mod network_stats;
 mod tx_queue;
 mod utils;
 mod workers;
 
+use crate::config::Config;
 use crate::network_stats::NETWORK_STATS;
 use crate::tx_queue::TX_QUEUE;
 use crate::workers::{DesireType, WorkerType};
@@ -19,14 +23,24 @@ use crate::workers::{DesireType, WorkerType};
 // writing. ~3.3% faster than jemalloc.
 static GLOBAL: MiMalloc = MiMalloc;
 
-// TODO: Configurable CLI args.
-const TOTAL_CONNECTIONS: u64 = 10_000; // This is limited by the amount of ephemeral ports available on the system.
-const THREAD_PINNING: bool = true;
-const TARGET_URL: &str = "http://127.0.0.1:8545";
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct CliArgs {
+    config: PathBuf,
+}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    if let Err(err) = utils::increase_nofile_limit(TOTAL_CONNECTIONS * 10) {
+    let args = CliArgs::parse();
+
+    println!("[~] Loading config from {}...", args.config.display());
+    config::init(if args.config.exists() {
+        Config::from_file(&args.config).unwrap_or_else(|e| panic!("[!] Failed to load config file: {e:?}"))
+    } else {
+        panic!("[!] Config file not found: {}", args.config.display());
+    });
+
+    if let Err(err) = utils::increase_nofile_limit(config::get().network_worker.total_connections * 10) {
         println!("[!] Failed to increase file descriptor limit: {err}.");
     }
 
@@ -37,16 +51,20 @@ async fn main() {
     rayon::ThreadPoolBuilder::new().num_threads(core_ids.len()).build_global().unwrap();
 
     // Pin the tokio runtime to a core (if enabled).
-    utils::maybe_pin_thread(core_ids.pop().unwrap(), THREAD_PINNING);
+    utils::maybe_pin_thread(core_ids.pop().unwrap());
 
     // Given our desired breakdown of workers, translate this into actual numbers of workers to spawn.
     let (workers, worker_counts) = workers::assign_workers(
         core_ids, // Doesn't include the main runtime core.
-        vec![(WorkerType::TxGen, DesireType::Percentage(0.1)), (WorkerType::Network, DesireType::Percentage(0.9))],
-        THREAD_PINNING, // Only log core ranges if thread pinning is actually enabled.
+        vec![
+            (WorkerType::TxGen, DesireType::Percentage(config::get().workers.tx_gen_worker_percentage)),
+            (WorkerType::Network, DesireType::Percentage(config::get().workers.network_worker_percentage)),
+        ],
+        config::get().workers.thread_pinning, // Only log core ranges if thread pinning is actually enabled.
     );
 
-    let connections_per_network_worker = TOTAL_CONNECTIONS / worker_counts[&WorkerType::Network];
+    let connections_per_network_worker =
+        config::get().network_worker.total_connections / worker_counts[&WorkerType::Network];
     println!("[*] Connections per network worker: {}", connections_per_network_worker);
 
     // TODO: Having the assign_workers function do this would be cleaner.
@@ -60,20 +78,19 @@ async fn main() {
         match worker_type {
             WorkerType::TxGen => {
                 thread::spawn(move || {
-                    utils::maybe_pin_thread(core_id, THREAD_PINNING);
+                    utils::maybe_pin_thread(core_id);
                     workers::tx_gen_worker(tx_gen_worker_id);
                 });
                 tx_gen_worker_id += 1;
             }
             WorkerType::Network => {
                 thread::spawn(move || {
-                    utils::maybe_pin_thread(core_id, THREAD_PINNING);
+                    utils::maybe_pin_thread(core_id);
                     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 
                     rt.block_on(async {
                         for i in 0..connections_per_network_worker {
                             tokio::spawn(workers::network_worker(
-                                TARGET_URL,
                                 (network_worker_id * connections_per_network_worker + i) as usize,
                             ));
                         }
@@ -88,8 +105,10 @@ async fn main() {
     println!("[*] Starting reporters...");
 
     // Start reporters.
-    tokio::spawn(TX_QUEUE.start_reporter(Duration::from_secs(3)));
-    tokio::spawn(NETWORK_STATS.start_reporter(Duration::from_secs(3)))
-        .await // Keep the main thread alive forever.
-        .unwrap();
+    tokio::spawn(TX_QUEUE.start_reporter(Duration::from_secs(config::get().reporters.tx_queue_report_interval_secs)));
+    tokio::spawn(
+        NETWORK_STATS.start_reporter(Duration::from_secs(config::get().reporters.network_stats_report_interval_secs)),
+    )
+    .await // Keep the main thread alive forever.
+    .unwrap();
 }

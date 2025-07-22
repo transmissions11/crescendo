@@ -9,25 +9,26 @@ use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
 use thousands::Separable;
 
+use crate::config;
 use crate::network_stats::NETWORK_STATS;
 use crate::tx_queue::TX_QUEUE;
-use crate::TOTAL_CONNECTIONS;
 
-const BATCH_FACTOR: usize = 1; // How many txs to send in a single request.
-
-pub async fn network_worker(url: &str, worker_id: usize) {
-    let mut connector = HttpConnector::new();
-    connector.set_nodelay(true);
-    connector.set_keepalive(Some(Duration::from_secs(60)));
+pub async fn network_worker(worker_id: usize) {
+    let config = &config::get().network_worker;
 
     let client: Client<_, Full<Bytes>> = Client::builder(TokioExecutor::new())
         .pool_idle_timeout(Duration::from_secs(90))
         .pool_max_idle_per_host(100)
         .retry_canceled_requests(true)
-        .build(connector);
+        .build({
+            let mut connector = HttpConnector::new();
+            connector.set_nodelay(true);
+            connector.set_keepalive(Some(Duration::from_secs(60)));
+            connector
+        });
 
     loop {
-        if let Some(txs) = TX_QUEUE.pop_at_most(BATCH_FACTOR).await {
+        if let Some(txs) = TX_QUEUE.pop_at_most(config.batch_factor).await {
             let json_body = format!(
                 "[{}]",
                 txs.iter()
@@ -45,7 +46,7 @@ pub async fn network_worker(url: &str, worker_id: usize) {
 
             let req = Request::builder()
                 .method("POST")
-                .uri(url)
+                .uri(&config.target_url)
                 .header("Content-Type", "application/json")
                 .body(Full::new(Bytes::from(json_body.into_bytes())))
                 .unwrap();
@@ -56,7 +57,7 @@ pub async fn network_worker(url: &str, worker_id: usize) {
                     if worker_id == 0 {
                         let duration = start_time.elapsed();
                         let implied_total_rps =
-                            (txs.len() as f64 / duration.as_secs_f64()) * (TOTAL_CONNECTIONS as f64);
+                            (txs.len() as f64 / duration.as_secs_f64()) * (config.total_connections as f64);
                         println!(
                             "[~] Worker {} request duration: {:.1?} ({} implied total RPS)",
                             worker_id,
@@ -82,7 +83,7 @@ pub async fn network_worker(url: &str, worker_id: usize) {
                             Err(e) => {
                                 eprintln!("[!] Failed to read response body: {:?}", e);
                                 NETWORK_STATS.inc_errors_by(txs.len());
-                                tokio::time::sleep(Duration::from_millis(100)).await;
+                                tokio::time::sleep(Duration::from_millis(config.error_sleep_ms)).await;
                             }
                         }
                     } else {
@@ -99,7 +100,7 @@ pub async fn network_worker(url: &str, worker_id: usize) {
             }
         } else {
             // Sleep for a bit while the tx queue repopulates.
-            tokio::time::sleep(Duration::from_millis(25)).await;
+            tokio::time::sleep(Duration::from_millis(config.tx_queue_empty_sleep_ms)).await;
         }
     }
 }

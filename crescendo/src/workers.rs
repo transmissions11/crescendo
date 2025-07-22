@@ -6,7 +6,7 @@ mod network;
 mod tx_gen;
 
 pub use network::network_worker;
-pub use tx_gen::{tx_gen_worker, NUM_ACCOUNTS};
+pub use tx_gen::tx_gen_worker;
 
 use crate::utils::format_ranges;
 
