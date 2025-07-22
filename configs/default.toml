@@ -1,4 +1,4 @@
-[network]
+[network_worker]
 target_url = "http://127.0.0.1:8545"
 total_connections = 10_000 # Limited by # of ephemeral ports.
 
@@ -7,7 +7,7 @@ batch_factor = 1
 error_sleep_ms = 100
 tx_queue_empty_sleep_ms = 25
 
-[transaction]
+[tx_gen_worker]
 chain_id = 1337
 num_accounts = 25_000 # Limited by the number in the genesis (see generate_genesis_alloc.rs)
 
@@ -21,7 +21,7 @@ mnemonic = "test test test test test test test test test test test junk"
 recipient_distribution_factor = 20 # 1/20 of accounts receive transfers.
 max_transfer_amount = 10
 
-[rate_limiting]
+[rate_limiter]
 initial_ratelimit = 100 # txs/s
 
 # Rate limit thresholds: [(threshold, rate_limit)]
@@ -38,12 +38,12 @@ ratelimit_thresholds = [
     [300_000, 15_000],  # NUM_ACCOUNTS * 12
 ]
 
-[worker]
+[workers]
 thread_pinning = true
 
 tx_gen_worker_percentage = 0.1
 network_worker_percentage = 0.9
 
-[reporting]
+[reporters]
 tx_queue_report_interval_secs = 3
 network_stats_report_interval_secs = 3
