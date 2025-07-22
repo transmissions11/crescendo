@@ -10,7 +10,7 @@ use crate::workers::NUM_ACCOUNTS;
 
 const INITIAL_RATELIMIT: u64 = 100;
 #[rustfmt::skip]
-const RATELIMIT_THRESHOLDS: [(u32, u64); 8] = [
+const RATELIMIT_THRESHOLDS: [(u32, u64); 10] = [
     (NUM_ACCOUNTS / 16,     250),
     (NUM_ACCOUNTS / 8,      500),
     (NUM_ACCOUNTS,        1_000),
@@ -19,6 +19,8 @@ const RATELIMIT_THRESHOLDS: [(u32, u64); 8] = [
     (NUM_ACCOUNTS * 8,    7_500),
     (NUM_ACCOUNTS * 10,  12_500),
     (NUM_ACCOUNTS * 12,  15_000),
+    (NUM_ACCOUNTS * 14,  20_000),
+    (NUM_ACCOUNTS * 16,  25_000),
 ]; // Note: This must be sorted in ascending order of threshold!
 
 pub struct TxQueue {
