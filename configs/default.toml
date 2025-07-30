@@ -35,6 +35,10 @@ ratelimit_thresholds = [
     [200_000, 7_500],   # NUM_ACCOUNTS * 8
     [250_000, 12_500],  # NUM_ACCOUNTS * 10
     [300_000, 15_000],  # NUM_ACCOUNTS * 12
+    [350_000, 20_000],  # NUM_ACCOUNTS * 14
+    [400_000, 25_000],  # NUM_ACCOUNTS * 16
+    [450_000, 30_000],  # NUM_ACCOUNTS * 18
+    [550_000, 45_000],  # NUM_ACCOUNTS * 22
 ]
 
 [workers]
