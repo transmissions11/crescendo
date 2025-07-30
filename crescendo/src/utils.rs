@@ -69,3 +69,25 @@ pub fn format_ranges(nums: &[usize]) -> String {
 
     ranges.join(", ")
 }
+
+/// Merge two TOML values, with `overlay` taking precedence over `base`.
+pub fn merge_toml_values(base: toml::Value, overlay: toml::Value) -> toml::Value {
+    match (base, overlay) {
+        (toml::Value::Table(mut base_table), toml::Value::Table(overlay_table)) => {
+            for (key, overlay_value) in overlay_table {
+                match base_table.get(&key) {
+                    Some(base_value) if base_value.is_table() && overlay_value.is_table() => {
+                        // Recursively merge nested tables
+                        base_table.insert(key, merge_toml_values(base_value.clone(), overlay_value));
+                    }
+                    _ => {
+                        // Replace the value
+                        base_table.insert(key, overlay_value);
+                    }
+                }
+            }
+            toml::Value::Table(base_table)
+        }
+        (_, overlay) => overlay, // For non-table values, overlay completely replaces base.
+    }
+}

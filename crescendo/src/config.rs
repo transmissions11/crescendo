@@ -3,6 +3,8 @@ use std::sync::OnceLock;
 
 use serde::{Deserialize, Serialize};
 
+use crate::utils::merge_toml_values;
+
 /// Global configuration instance for the application.
 static CONFIG_INSTANCE: OnceLock<Config> = OnceLock::new();
 
@@ -30,8 +32,29 @@ pub struct Config {
 impl Config {
     pub fn from_file(path: &PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
         let config_str = std::fs::read_to_string(path)?;
-        let config: Config = toml::from_str(&config_str)?;
-        Ok(config)
+        let mut config_value: toml::Value = toml::from_str(&config_str)?;
+
+        // Check if this config inherits from another.
+        if let Some(inherits) = config_value.get("inherits").and_then(|v| v.as_str()) {
+            // Load the inherited config recursively.
+            let inherited_config = Self::from_file(&{
+                if let Some(parent) = path.parent() {
+                    parent.join(inherits)
+                } else {
+                    PathBuf::from(inherits)
+                }
+            })?;
+
+            // Merge the current config over the inherited one.
+            config_value = merge_toml_values(toml::Value::try_from(inherited_config)?, config_value);
+        }
+
+        // Remove the inherits field before deserializing.
+        if let Some(table) = config_value.as_table_mut() {
+            table.remove("inherits");
+        }
+
+        Ok(config_value.try_into()?)
     }
 }
 
