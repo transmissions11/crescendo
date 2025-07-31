@@ -26,18 +26,23 @@ static GLOBAL: MiMalloc = MiMalloc;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct CliArgs {
-    config: PathBuf,
+    /// Path to the configuration file (positional argument)
+    config_file: Option<PathBuf>,
+    /// Path to the configuration file (flag variant)
+    #[arg(short, long, hide = true)]
+    config: Option<PathBuf>,
 }
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     let args = CliArgs::parse();
 
-    println!("[~] Loading config from {}...", args.config.display());
-    config::init(if args.config.exists() {
-        Config::from_file(&args.config).unwrap_or_else(|e| panic!("[!] Failed to load config file: {e:?}"))
+    let config_path = args.config_file.or(args.config).expect("[!] Config file path must be provided.");
+    println!("[~] Loading config from {}...", config_path.display());
+    config::init(if config_path.exists() {
+        Config::from_file(&config_path).unwrap_or_else(|e| panic!("[!] Failed to load config file: {e:?}"))
     } else {
-        panic!("[!] Config file not found: {}", args.config.display());
+        panic!("[!] Config file not found: {}", config_path.display());
     });
 
     if let Err(err) = utils::increase_nofile_limit(config::get().network_worker.total_connections * 10) {
