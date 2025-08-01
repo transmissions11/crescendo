@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     const NUM_ACCOUNTS: u32 = 50_000;
     const MNEMONIC: &str = "test test test test test test test test test test test junk";
 
-    println!("Generating {} accounts...", NUM_ACCOUNTS);
+    println!("Generating {NUM_ACCOUNTS} accounts...");
 
     let genesis_alloc: BTreeMap<String, AccountBalance> = (0..NUM_ACCOUNTS)
         .into_par_iter()
@@ -27,9 +27,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let signer =
                 MnemonicBuilder::<English>::default().phrase(MNEMONIC).index(worker_id).unwrap().build().unwrap();
 
-            let address = secret_key_to_address(&signer.credential());
+            let address = secret_key_to_address(signer.credential());
 
-            (format!("{:?}", address), AccountBalance { balance: "0xD3C21BCECCEDA1000000".to_string() })
+            (format!("{address:?}"), AccountBalance { balance: "0xD3C21BCECCEDA1000000".to_string() })
         })
         .collect();
 
@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let json = serde_json::to_string_pretty(&genesis_alloc)?;
     fs::write(output_path, json)?;
 
-    println!("\nSuccessfully generated {} accounts!", NUM_ACCOUNTS);
+    println!("\nSuccessfully generated {NUM_ACCOUNTS} accounts!");
     println!("Accounts saved to: {}", output_path.display());
 
     Ok(())

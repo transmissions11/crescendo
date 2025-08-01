@@ -4,7 +4,6 @@ use std::thread;
 use std::time::Duration;
 
 use clap::Parser;
-use core_affinity;
 use mimalloc::MiMalloc;
 
 mod config;
@@ -70,7 +69,7 @@ async fn main() {
 
     let connections_per_network_worker =
         config::get().network_worker.total_connections / worker_counts[&WorkerType::Network];
-    println!("[*] Connections per network worker: {}", connections_per_network_worker);
+    println!("[*] Connections per network worker: {connections_per_network_worker}");
 
     // TODO: Having the assign_workers function do this would be cleaner.
     let mut tx_gen_worker_id = 0;

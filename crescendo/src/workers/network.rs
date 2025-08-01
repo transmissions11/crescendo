@@ -82,19 +82,19 @@ pub async fn network_worker(worker_id: usize) {
                                 NETWORK_STATS.inc_requests_by(txs.len() - error_count);
                             }
                             Err(e) => {
-                                eprintln!("[!] Failed to read response body: {:?}", e);
+                                eprintln!("[!] Failed to read response body: {e:?}");
                                 NETWORK_STATS.inc_errors_by(txs.len());
                                 tokio::time::sleep(Duration::from_millis(config.error_sleep_ms)).await;
                             }
                         }
                     } else {
-                        println!("[!] Request did not have OK status: {:?}", res);
+                        println!("[!] Request did not have OK status: {res:?}");
                         NETWORK_STATS.inc_errors_by(txs.len());
                         tokio::time::sleep(Duration::from_millis(100)).await;
                     }
                 }
                 Err(e) => {
-                    eprintln!("[!] Request failed: {:?}", e);
+                    eprintln!("[!] Request failed: {e:?}");
                     NETWORK_STATS.inc_errors_by(txs.len());
                     tokio::time::sleep(Duration::from_millis(100)).await;
                 }

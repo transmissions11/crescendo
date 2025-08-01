@@ -44,11 +44,12 @@ sol! {
 }
 
 pub fn tx_gen_worker(_worker_id: u32) {
+    let config = &config::get().tx_gen_worker;
+
     let mut rng = rand::rng();
+    let mut tx_batch = Vec::with_capacity(config.batch_size as usize);
 
     loop {
-        let config = &config::get().tx_gen_worker;
-
         let account_index = rng.random_range(0..config.num_accounts); // Acount we'll be sending from.
 
         // Get and increment nonce atomically.
@@ -83,7 +84,12 @@ pub fn tx_gen_worker(_worker_id: u32) {
             },
         );
 
-        TX_QUEUE.push_tx(tx);
+        tx_batch.push(tx);
+
+        // Once we've accumulated batch_size transactions, drain them all to the queue.
+        if tx_batch.len() >= config.batch_size as usize {
+            TX_QUEUE.push_txs(std::mem::take(&mut tx_batch));
+        }
     }
 }
 

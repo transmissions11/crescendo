@@ -57,7 +57,7 @@ pub fn assign_workers(
                     if let Some(core_id) = core_ids.pop() {
                         result.push((core_id, worker_type));
                         *worker_counts.entry(worker_type).or_insert(0) += 1;
-                        worker_cores.entry(worker_type).or_insert_with(Vec::new).push(core_id);
+                        worker_cores.entry(worker_type).or_default().push(core_id);
                         remaining_cores -= 1;
                     }
                 }
@@ -74,7 +74,7 @@ pub fn assign_workers(
             if let Some(core_id) = core_ids.pop() {
                 result.push((core_id, *worker_type));
                 *worker_counts.entry(*worker_type).or_insert(0) += 1;
-                worker_cores.entry(*worker_type).or_insert_with(Vec::new).push(core_id);
+                worker_cores.entry(*worker_type).or_default().push(core_id);
                 remaining_cores -= 1;
             }
         }
@@ -87,12 +87,12 @@ pub fn assign_workers(
             if let Some(core_id) = core_ids.pop() {
                 result.push((core_id, worker_type));
                 *worker_counts.entry(worker_type).or_insert(0) += 1;
-                worker_cores.entry(worker_type).or_insert_with(Vec::new).push(core_id);
+                worker_cores.entry(worker_type).or_default().push(core_id);
             }
         }
     }
 
-    println!("[+] Spawning {} workers:", total_starting_cores);
+    println!("[+] Spawning {total_starting_cores} workers:");
     for (worker_type, count) in worker_counts.clone() {
         if log_core_ranges {
             if let Some(cores) = worker_cores.get(&worker_type) {
@@ -100,13 +100,13 @@ pub fn assign_workers(
                 core_ids.sort();
 
                 let core_str = match core_ids.as_slice() {
-                    [single] => format!("core {}", single),
+                    [single] => format!("core {single}"),
                     ids => format!("cores {}", format_ranges(ids)),
                 };
-                println!("- {:?}: {} ({})", worker_type, count, core_str);
+                println!("- {worker_type:?}: {count} ({core_str})");
             }
         } else {
-            println!("- {:?}: {}", worker_type, count);
+            println!("- {worker_type:?}: {count}");
         }
     }
 

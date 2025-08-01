@@ -37,9 +37,9 @@ impl TxQueue {
 pub static TX_QUEUE: std::sync::LazyLock<TxQueue> = std::sync::LazyLock::new(TxQueue::new);
 
 impl TxQueue {
-    pub fn push_tx(&self, tx: Vec<u8>) {
-        self.total_added.fetch_add(1, Ordering::Relaxed);
-        self.queue.lock().push_back(tx);
+    pub fn push_txs(&self, txs: Vec<Vec<u8>>) {
+        self.total_added.fetch_add(txs.len() as u64, Ordering::Relaxed);
+        self.queue.lock().extend(txs);
     }
 
     pub fn queue_len(&self) -> usize {
@@ -47,15 +47,25 @@ impl TxQueue {
     }
 
     pub async fn pop_at_most(&self, max_count: usize) -> Option<Vec<Vec<u8>>> {
-        let mut queue = self.queue.lock();
-        let allowed = (0..queue.len().min(max_count)).take_while(|_| self.rate_limiter.try_wait().is_ok()).count();
+        // Assume the queue has sufficient items for now.
+        let allowed = (0..max_count).take_while(|_| self.rate_limiter.try_wait().is_ok()).count();
         if allowed == 0 {
             return None;
+        }
+
+        // Scope to release lock asap.
+        let drained = {
+            let mut queue = self.queue.lock();
+            let to_drain = allowed.min(queue.len());
+            if to_drain == 0 {
+                return None;
+            }
+            queue.drain(..to_drain).collect::<Vec<_>>()
         };
 
-        self.total_popped.fetch_add(allowed as u64, Ordering::Relaxed);
+        self.total_popped.fetch_add(drained.len() as u64, Ordering::Relaxed);
 
-        Some(queue.drain(..allowed).collect())
+        Some(drained)
     }
 
     pub async fn start_reporter(&self, measurement_interval: std::time::Duration) {
