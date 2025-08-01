@@ -152,11 +152,13 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
 
                                     if nonce == current_expected {
                                         // Nonce is now valid, break out of loop
-                                        println!(
-                                            "[↻] Spun waiting for nonce gap of {} for {sender} to close for {:?}",
-                                            (nonce as i64) - (expected_nonce as i64),
-                                            start.elapsed()
-                                        );
+                                        if start.elapsed() > Duration::from_secs(1) {
+                                            println!(
+                                                "[↻] Spun waiting for nonce gap of {} for {sender} to close for {:?}",
+                                                (nonce as i64) - (expected_nonce as i64),
+                                                start.elapsed()
+                                            );
+                                        }
 
                                         break;
                                     }
