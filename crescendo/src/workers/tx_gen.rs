@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::LazyLock;
 use std::time::Instant;
 
@@ -9,7 +8,7 @@ use alloy::sol_types::SolCall;
 use alloy_consensus::{SignableTransaction, TxLegacy};
 use alloy_signer_local::coins_bip39::English;
 use alloy_signer_local::{MnemonicBuilder, PrivateKeySigner};
-use parking_lot::Mutex;
+use dashmap::DashMap;
 use rand::Rng;
 use rayon::prelude::*;
 use thousands::Separable;
@@ -17,12 +16,12 @@ use thousands::Separable;
 use crate::config;
 use crate::tx_queue::TX_QUEUE;
 
-static NONCE_MAP: LazyLock<Mutex<HashMap<u32, u64>>> = LazyLock::new(|| {
-    let mut map = HashMap::with_capacity(config::get().tx_gen_worker.num_accounts as usize);
+static NONCE_MAP: LazyLock<DashMap<u32, u64>> = LazyLock::new(|| {
+    let map = DashMap::with_capacity(config::get().tx_gen_worker.num_accounts as usize);
     for i in 0..config::get().tx_gen_worker.num_accounts {
         map.insert(i, 0);
     }
-    Mutex::new(map)
+    map
 });
 
 static SIGNER_LIST: LazyLock<Vec<PrivateKeySigner>> = LazyLock::new(|| {
@@ -54,9 +53,9 @@ pub fn tx_gen_worker(_worker_id: u32) {
 
         // Get and increment nonce atomically.
         let nonce = {
-            let mut nonce_map = NONCE_MAP.lock();
-            let current_nonce = *nonce_map.get(&account_index).unwrap();
-            nonce_map.insert(account_index, current_nonce + 1);
+            let mut entry = NONCE_MAP.get_mut(&account_index).unwrap();
+            let current_nonce = *entry;
+            *entry = current_nonce + 1;
             current_nonce
         };
 

@@ -1599,6 +1599,7 @@ dependencies = [
  "clap",
  "core_affinity",
  "crossbeam-utils",
+ "dashmap",
  "hex",
  "http",
  "http-body-util",
