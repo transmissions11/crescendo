@@ -71,8 +71,8 @@ impl TxQueue {
             let current_queue_len = self.queue_len();
             let added_per_second = (total_added - last_total_added) / measurement_interval.as_secs();
             let popped_per_second = (total_popped - last_total_popped) / measurement_interval.as_secs();
-            let queue_growth =
-                ((current_queue_len.saturating_sub(last_queue_len)) as u64) / measurement_interval.as_secs();
+            let delta_per_second =
+                ((current_queue_len as i64 - last_queue_len as i64) as f64 / measurement_interval.as_secs_f64()) as i64;
 
             // Adjust rate limit based on total popped transactions and thresholds.
             let rate_config = &config::get().rate_limiting;
@@ -95,7 +95,7 @@ impl TxQueue {
                 "[*] TxQueue +/s: {}, -/s: {}, Δ/s: {}, Length: {}, Rate limit: {}/s",
                 added_per_second.separate_with_commas(),
                 popped_per_second.separate_with_commas(),
-                queue_growth.separate_with_commas(),
+                delta_per_second.separate_with_commas(),
                 current_queue_len.separate_with_commas(),
                 self.rate_limiter.refill_amount().separate_with_commas()
             );
