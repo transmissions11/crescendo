@@ -135,7 +135,7 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
                                 let timeout = Duration::from_secs(10);
 
                                 loop {
-                                    println!("Spinning on {sender}...");
+                                    println!("Spinning on {sender} (got {nonce}, expected {expected_nonce})");
                                     if start.elapsed() > timeout {
                                         panic!(
                                             "Nonce validation timeout: expected nonce {} but got {} for sender {}",
