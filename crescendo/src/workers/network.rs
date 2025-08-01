@@ -54,6 +54,7 @@ pub async fn network_worker(worker_id: usize) {
             let start_time = Instant::now();
             match client.request(req).await {
                 Ok(res) => {
+                    // Note: May be better to print for random workers, or a range, or the median + last + first.
                     if worker_id == 0 {
                         let duration = start_time.elapsed();
                         let implied_total_rps =
