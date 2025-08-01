@@ -34,7 +34,7 @@ pub fn maybe_pin_thread(core_id: CoreId) {
     }
 
     if !core_affinity::set_for_current(core_id) {
-        panic!("[!] Failed to pin thread to core {}.", core_id.id);
+        panic!("[!] Failed to pin thread to core {}. Try disabling thread_pinning in your config.", core_id.id);
     }
 }
 
