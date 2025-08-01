@@ -132,13 +132,14 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
                             if nonce != expected_nonce {
                                 // Spin for up to 30 seconds waiting for correct nonce
                                 let start = Instant::now();
-                                let timeout = Duration::from_secs(10);
+                                let timeout = Duration::from_secs(15);
 
                                 loop {
                                     if start.elapsed() > timeout {
                                         println!(
-                                            "[!] Nonce validation timeout: expected nonce {} but got {} for sender {}",
-                                            expected_nonce, nonce, sender
+                                            "[!] Timed out waiting for nonce gap of {} for {sender} to close for {:?}",
+                                            (nonce as i64) - (expected_nonce as i64),
+                                            start.elapsed()
                                         );
                                         std::process::exit(1);
                                     }
@@ -153,7 +154,7 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
                                     if nonce == current_expected {
                                         // Nonce is now valid, break out of loop
                                         println!(
-                                            "Spun waiting for nonce gap of {} for {sender} to close for {:?}",
+                                            "[↻] Spun waiting for nonce gap of {} for {sender} to close for {:?}",
                                             (nonce as i64) - (expected_nonce as i64),
                                             start.elapsed()
                                         );
