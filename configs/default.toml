@@ -20,7 +20,7 @@ token_contract_address = "0x2000000000000000000000000000000000000001"
 recipient_distribution_factor = 20 # 1/20 of accounts receive transfers.
 max_transfer_amount = 10
 
-batch_size = 1000 # Number of transactions to generate before pushing to queue.
+batch_size = 1_000 # Number of transactions to generate before pushing to queue.
 
 [rate_limiting]
 initial_ratelimit = 100 # txs/s
