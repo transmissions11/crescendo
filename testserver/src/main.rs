@@ -16,9 +16,9 @@ static TOTAL_REQUESTS: CachePadded<AtomicU64> = CachePadded::new(AtomicU64::new(
 static CONCURRENT_REQUESTS: CachePadded<AtomicU64> = CachePadded::new(AtomicU64::new(0));
 
 async fn handler() -> Json<serde_json::Value> {
-    CONCURRENT_REQUESTS.fetch_add(1, Ordering::Relaxed);
-    tokio::time::sleep(Duration::from_millis(1)).await; // Simulate processing time.
-    CONCURRENT_REQUESTS.fetch_sub(1, Ordering::Relaxed);
+    // CONCURRENT_REQUESTS.fetch_add(1, Ordering::Relaxed);
+    // tokio::time::sleep(Duration::from_millis(1)).await; // Simulate processing time.
+    // CONCURRENT_REQUESTS.fetch_sub(1, Ordering::Relaxed);
     TOTAL_REQUESTS.fetch_add(1, Ordering::Relaxed);
     Json(json!({
         "jsonrpc": "2.0",
