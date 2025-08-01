@@ -25,9 +25,8 @@ static CONCURRENT_REQUESTS: CachePadded<AtomicU64> = CachePadded::new(AtomicU64:
 
 static NONCES: LazyLock<DashMap<Address, u64>> = LazyLock::new(DashMap::new);
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct JsonRpcRequest {
-    jsonrpc: String,
     method: String,
     params: Vec<String>,
     id: u64,
