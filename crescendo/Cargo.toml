@@ -29,3 +29,4 @@ rand = "0.9.1"
 ratelimit = "0.10"
 clap = { version = "4.5", features = ["derive", "env"] }
 toml = "0.8"
+parking_lot = "0.12.4"

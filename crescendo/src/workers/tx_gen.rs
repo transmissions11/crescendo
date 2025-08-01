@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
+use std::sync::LazyLock;
 use std::time::Instant;
 
 use alloy::network::TxSignerSync;
@@ -9,6 +9,7 @@ use alloy::sol_types::SolCall;
 use alloy_consensus::{SignableTransaction, TxLegacy};
 use alloy_signer_local::coins_bip39::English;
 use alloy_signer_local::{MnemonicBuilder, PrivateKeySigner};
+use parking_lot::Mutex;
 use rand::Rng;
 use rayon::prelude::*;
 use thousands::Separable;
@@ -52,7 +53,7 @@ pub fn tx_gen_worker(_worker_id: u32) {
 
         // Get and increment nonce atomically.
         let nonce = {
-            let mut nonce_map = NONCE_MAP.lock().unwrap();
+            let mut nonce_map = NONCE_MAP.lock();
             let current_nonce = *nonce_map.get(&account_index).unwrap();
             nonce_map.insert(account_index, current_nonce + 1);
             current_nonce

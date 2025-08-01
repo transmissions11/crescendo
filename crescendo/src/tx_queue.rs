@@ -1,8 +1,8 @@
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
 use std::time::Duration;
 
+use parking_lot::Mutex;
 use ratelimit::Ratelimiter;
 use thousands::Separable;
 
@@ -39,15 +39,15 @@ pub static TX_QUEUE: std::sync::LazyLock<TxQueue> = std::sync::LazyLock::new(TxQ
 impl TxQueue {
     pub fn push_tx(&self, tx: Vec<u8>) {
         self.total_added.fetch_add(1, Ordering::Relaxed);
-        self.queue.lock().unwrap().push_back(tx);
+        self.queue.lock().push_back(tx);
     }
 
     pub fn queue_len(&self) -> usize {
-        self.queue.lock().map(|q| q.len()).unwrap_or(0)
+        self.queue.lock().len()
     }
 
     pub async fn pop_at_most(&self, max_count: usize) -> Option<Vec<Vec<u8>>> {
-        let mut queue = self.queue.lock().ok()?;
+        let mut queue = self.queue.lock();
         let allowed = (0..queue.len().min(max_count)).take_while(|_| self.rate_limiter.try_wait().is_ok()).count();
         if allowed == 0 {
             return None;

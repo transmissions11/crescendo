@@ -1606,6 +1606,7 @@ dependencies = [
  "hyper-util",
  "mimalloc",
  "num_cpus",
+ "parking_lot",
  "rand 0.9.1",
  "ratelimit",
  "rayon",
