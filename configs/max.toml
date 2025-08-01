@@ -3,9 +3,9 @@ inherits = "aggressive.toml"
 [rate_limiting]
 initial_ratelimit = 500
 ratelimit_thresholds = [
-    [1_000, 1_000],
+    [2_500, 1_000],
     [5_000, 2_500],
-    [25_000, 9999999999999999],
+    [25_000, 500_000],
 ]
 
 [tx_gen_worker]
