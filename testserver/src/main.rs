@@ -132,12 +132,12 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
                             if nonce != expected_nonce {
                                 // Spin for up to 30 seconds waiting for correct nonce
                                 let start = Instant::now();
-                                let timeout = Duration::from_secs(9);
+                                let timeout = Duration::from_secs(30);
 
                                 loop {
                                     if start.elapsed() > timeout {
                                         println!(
-                                            "[!] Timed out waiting for nonce gap of {} for {sender} to close for {:?}",
+                                            "[!] Timed out waiting for nonce gap of {} for {sender} to close for {:?} (killing process...)",
                                             (nonce as i64) - (expected_nonce as i64),
                                             start.elapsed()
                                         );
