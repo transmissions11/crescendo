@@ -9,7 +9,7 @@ ratelimit_thresholds = [
 ]
 
 [tx_gen_worker]
-batch_size = 10_000
+batch_size = 1_000
 
 [network_worker]
 total_connections = 20_000
