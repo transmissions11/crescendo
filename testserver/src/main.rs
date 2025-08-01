@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::LazyLock;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use alloy::eips::Decodable2718;
 use alloy::primitives::Address;
@@ -70,7 +70,7 @@ async fn rpc_handler(body: Bytes) -> Json<serde_json::Value> {
 
                 let mut responses = Vec::new();
                 for req in requests {
-                    responses.push(process_single_request(req));
+                    responses.push(process_single_request(req).await);
                 }
                 Json(serde_json::Value::Array(
                     responses.into_iter().map(|r| serde_json::to_value(r).unwrap()).collect(),
@@ -78,7 +78,7 @@ async fn rpc_handler(body: Bytes) -> Json<serde_json::Value> {
             } else {
                 // Single request
                 match serde_json::from_value::<JsonRpcRequest>(value) {
-                    Ok(req) => Json(serde_json::to_value(process_single_request(req)).unwrap()),
+                    Ok(req) => Json(serde_json::to_value(process_single_request(req).await).unwrap()),
                     Err(e) => {
                         eprintln!("Failed to parse single request: {}", e);
                         Json(json!({
@@ -106,7 +106,7 @@ async fn rpc_handler(body: Bytes) -> Json<serde_json::Value> {
     response
 }
 
-fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
+async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
     if req.method == "eth_sendRawTransaction" {
         if let Some(raw_tx) = req.params.first() {
             // Remove "0x" prefix if present
@@ -120,10 +120,42 @@ fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
                             let sender = tx_envelope.recover_signer().unwrap_or_default();
                             let nonce = tx_envelope.nonce();
 
+                            // Check if nonce is valid (should be previous_nonce + 1)
+                            if let Some(entry) = NONCES.get(&sender) {
+                                let expected_nonce = *entry + 1;
+
+                                if nonce != expected_nonce {
+                                    // Spin for up to 10 seconds waiting for correct nonce
+                                    let start = Instant::now();
+                                    let timeout = Duration::from_secs(10);
+
+                                    loop {
+                                        println!("Waiting for nonce to be updated...");
+                                        if start.elapsed() > timeout {
+                                            panic!(
+                                                "Nonce validation timeout: expected nonce {} but got {} for sender {}",
+                                                expected_nonce, nonce, sender
+                                            );
+                                        }
+
+                                        // Check again if the expected nonce has been updated by another thread
+                                        if let Some(current_entry) = NONCES.get(&sender) {
+                                            let current_expected = *current_entry + 1;
+                                            if nonce == current_expected {
+                                                println!("Found!");
+                                                // Nonce is now valid, break out of loop
+                                                break;
+                                            }
+                                        }
+
+                                        // Small delay to avoid busy waiting
+                                        tokio::time::sleep(Duration::from_millis(10)).await;
+                                    }
+                                }
+                            }
+
                             // Update nonce tracking
                             NONCES.entry(sender).and_modify(|e| *e = nonce).or_insert(nonce);
-
-                            println!("Transaction from {} with nonce {}", sender, nonce);
 
                             // Return a fake transaction hash
                             JsonRpcResponse {
