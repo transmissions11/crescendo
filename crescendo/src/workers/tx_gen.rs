@@ -88,8 +88,7 @@ pub fn tx_gen_worker(_worker_id: u32) {
 
         // Once we've accumulated batch_size transactions, drain them all to the queue.
         if tx_batch.len() >= config.batch_size as usize {
-            #[allow(clippy::drain_collect)]
-            TX_QUEUE.push_txs(tx_batch.drain(..).collect());
+            TX_QUEUE.push_txs(std::mem::take(&mut tx_batch));
         }
     }
 }
