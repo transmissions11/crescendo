@@ -150,8 +150,10 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
                                     };
 
                                     if nonce == current_expected {
-                                        // Nonce is now valid, break out of loop
-                                        println!("Found! {sender} after {:?}", start.elapsed());
+                                        if start.elapsed() > Duration::from_secs(5) {
+                                            // Nonce is now valid, break out of loop
+                                            println!("Found! {sender} after {:?}", start.elapsed());
+                                        }
                                         break;
                                     }
 
