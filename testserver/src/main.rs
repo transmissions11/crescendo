@@ -150,7 +150,6 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
                                     };
 
                                     if nonce == current_expected {
-                                        println!("Found! {sender}");
                                         // Nonce is now valid, break out of loop
                                         break;
                                     }
