@@ -8,9 +8,6 @@ ratelimit_thresholds = [
     [25_000, 500_000],
 ]
 
-[tx_gen_worker]
-batch_size = 1_000
-
 [network_worker]
 total_connections = 20_000
 tx_queue_empty_sleep_ms = 5
