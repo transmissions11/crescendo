@@ -37,9 +37,9 @@ impl TxQueue {
 pub static TX_QUEUE: std::sync::LazyLock<TxQueue> = std::sync::LazyLock::new(TxQueue::new);
 
 impl TxQueue {
-    pub fn push_tx(&self, tx: Vec<u8>) {
-        self.total_added.fetch_add(1, Ordering::Relaxed);
-        self.queue.lock().push_back(tx);
+    pub fn push_txs(&self, txs: Vec<Vec<u8>>) {
+        self.total_added.fetch_add(txs.len() as u64, Ordering::Relaxed);
+        self.queue.lock().extend(txs);
     }
 
     pub fn queue_len(&self) -> usize {

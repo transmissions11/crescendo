@@ -82,6 +82,8 @@ pub struct TxGenWorkerConfig {
     pub token_contract_address: String,
     pub recipient_distribution_factor: u32,
     pub max_transfer_amount: u64,
+
+    pub batch_size: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
