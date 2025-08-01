@@ -16,5 +16,5 @@ total_connections = 20_000 # Limited by # of ephemeral ports.
 tx_queue_empty_sleep_ms = 5
 
 [workers]
-tx_gen_worker_percentage = 0.5
-network_worker_percentage = 0.5
+tx_gen_worker_percentage = 0.2
+network_worker_percentage = 0.8
