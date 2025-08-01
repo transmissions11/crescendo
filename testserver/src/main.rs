@@ -130,7 +130,7 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
                             };
 
                             if nonce != expected_nonce {
-                                // Spin for up to 10 seconds waiting for correct nonce
+                                // Spin for up to 30 seconds waiting for correct nonce
                                 let start = Instant::now();
                                 let timeout = Duration::from_secs(30);
 
@@ -151,7 +151,7 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
 
                                     if nonce == current_expected {
                                         // Nonce is now valid, break out of loop
-                                        println!("Found! {sender} after {} seconds", start.elapsed().as_secs());
+                                        println!("Found! {sender} after {:?}", start.elapsed());
                                         break;
                                     }
 
