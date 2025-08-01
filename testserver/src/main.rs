@@ -132,14 +132,15 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
                             if nonce != expected_nonce {
                                 // Spin for up to 30 seconds waiting for correct nonce
                                 let start = Instant::now();
-                                let timeout = Duration::from_secs(30);
+                                let timeout = Duration::from_secs(10);
 
                                 loop {
                                     if start.elapsed() > timeout {
-                                        panic!(
+                                        eprintln!(
                                             "Nonce validation timeout: expected nonce {} but got {} for sender {}",
                                             expected_nonce, nonce, sender
                                         );
+                                        std::process::exit(1);
                                     }
 
                                     // Check again if the expected nonce has been updated by another thread
