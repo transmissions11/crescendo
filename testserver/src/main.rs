@@ -136,8 +136,8 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
 
                                 loop {
                                     if start.elapsed() > timeout {
-                                        eprintln!(
-                                            "Nonce validation timeout: expected nonce {} but got {} for sender {}",
+                                        println!(
+                                            "[!] Nonce validation timeout: expected nonce {} but got {} for sender {}",
                                             expected_nonce, nonce, sender
                                         );
                                         std::process::exit(1);
