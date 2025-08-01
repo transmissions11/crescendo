@@ -120,37 +120,44 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
                             let sender = tx_envelope.recover_signer().unwrap_or_default();
                             let nonce = tx_envelope.nonce();
 
-                            // Check if nonce is valid (should be previous_nonce + 1)
-                            if let Some(entry) = NONCES.get(&sender) {
-                                let expected_nonce = *entry + 1;
+                            // Check if nonce is valid
+                            let expected_nonce = if let Some(entry) = NONCES.get(&sender) {
+                                // Existing sender: should be previous_nonce + 1
+                                *entry + 1
+                            } else {
+                                // New sender: should start at 0
+                                0
+                            };
 
-                                if nonce != expected_nonce {
-                                    // Spin for up to 10 seconds waiting for correct nonce
-                                    let start = Instant::now();
-                                    let timeout = Duration::from_secs(10);
+                            if nonce != expected_nonce {
+                                // Spin for up to 10 seconds waiting for correct nonce
+                                let start = Instant::now();
+                                let timeout = Duration::from_secs(10);
 
-                                    loop {
-                                        println!("Waiting for nonce to be updated...");
-                                        if start.elapsed() > timeout {
-                                            panic!(
-                                                "Nonce validation timeout: expected nonce {} but got {} for sender {}",
-                                                expected_nonce, nonce, sender
-                                            );
-                                        }
-
-                                        // Check again if the expected nonce has been updated by another thread
-                                        if let Some(current_entry) = NONCES.get(&sender) {
-                                            let current_expected = *current_entry + 1;
-                                            if nonce == current_expected {
-                                                println!("Found!");
-                                                // Nonce is now valid, break out of loop
-                                                break;
-                                            }
-                                        }
-
-                                        // Small delay to avoid busy waiting
-                                        tokio::time::sleep(Duration::from_millis(10)).await;
+                                loop {
+                                    println!("Spinning on {sender}...");
+                                    if start.elapsed() > timeout {
+                                        panic!(
+                                            "Nonce validation timeout: expected nonce {} but got {} for sender {}",
+                                            expected_nonce, nonce, sender
+                                        );
                                     }
+
+                                    // Check again if the expected nonce has been updated by another thread
+                                    let current_expected = if let Some(current_entry) = NONCES.get(&sender) {
+                                        *current_entry + 1
+                                    } else {
+                                        0
+                                    };
+
+                                    if nonce == current_expected {
+                                        println!("Found! {sender}");
+                                        // Nonce is now valid, break out of loop
+                                        break;
+                                    }
+
+                                    // Small delay to avoid busy waiting
+                                    tokio::time::sleep(Duration::from_millis(10)).await;
                                 }
                             }
 
