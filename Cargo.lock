@@ -4454,8 +4454,12 @@ dependencies = [
 name = "testserver"
 version = "0.1.0"
 dependencies = [
+ "alloy",
+ "alloy-consensus",
  "axum",
  "crossbeam-utils",
+ "dashmap",
+ "hex",
  "mimalloc",
  "num_cpus",
  "serde",

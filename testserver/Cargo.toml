@@ -12,3 +12,7 @@ mimalloc = "0.1.47"
 crossbeam-utils = "0.8.21"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+dashmap = "6.1"
+alloy = { version = "1", features = ["consensus", "rpc-types", "eips", "signers"] }
+alloy-consensus = { version = "1", features = ["secp256k1"] }
+hex = "0.4"
