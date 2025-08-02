@@ -11,4 +11,5 @@ ratelimit_thresholds = [
 ]
 
 [tx_gen_worker]
+num_accounts = 500
 batch_size = 1
