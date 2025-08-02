@@ -9,3 +9,4 @@ ratelimit_thresholds = [
     [200_000, 50_000],
     [400_000, 100_000],
 ]
+batch_size = 1
