@@ -134,6 +134,7 @@ async fn process_single_request(req: JsonRpcRequest) -> JsonRpcResponse {
                                 let timeout = Duration::from_secs(30);
 
                                 loop {
+                                    println!("Spinning on {sender}...");
                                     if start.elapsed() > timeout {
                                         println!(
                                             "[!] Timed out waiting for nonce gap of {} for {sender} to close for {:?} (killing process...)",
